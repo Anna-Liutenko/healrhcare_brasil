@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Inline Editor Test</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="../css/inline-editor.css">
+  <script src="../js/inline-notify.js"></script>
+  <script src="../js/InlineEditorManager.js"></script>
+</head>
+<body>
+  <h2>Inline Editor test harness</h2>
+  <div id="result">RUNNING...</div>
+  <div id="preview"><p data-inline-editable="true" data-block-id="test-block" data-field-path="data.text">Initial</p></div>
+
+  <script>
+    // trap fetch
+    window.__lastFetch = null;
+    window.fetch = function(url, opts){
+      window.__lastFetch = { url, opts };
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({ success: true }) });
+    };
+
+    (async function(){
+      try{
+        const preview = document.getElementById('preview');
+        const manager = new InlineEditorManager(preview, 'test-page');
+        manager.enableInlineMode();
+
+        const el = preview.querySelector('[data-inline-editable="true"]');
+        if(!el) throw new Error('editable element not found');
+
+        // start editing
+        manager.startEdit(el);
+        
+        // change content AND trigger input event (like user typing)
+        el.innerHTML = 'First change';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // wait 2200ms to let autosave run (debounce is 2000ms)
+        await new Promise(r => setTimeout(r, 2200));
+
+        // check fetch was called
+        const last = window.__lastFetch;
+        const passAutosave = last && last.url && last.opts && last.opts.body && last.opts.method === 'PATCH';
+        let passBody = false;
+        if(passAutosave){
+          try{
+            const body = JSON.parse(last.opts.body);
+            passBody = body.blockId === 'test-block' && (body.html || body.markdown) && (body.html.indexOf('First change') !== -1 || (body.markdown && body.markdown.indexOf('First change') !== -1));
+          }catch(e){ console.error('body parse error', e); }
+        }
+
+        // test undo stack: verify states were pushed
+        const undoStackLength = manager.undoStack.length;
+        const passUndoStack = undoStackLength > 0;
+
+        const pass = passAutosave && passBody && passUndoStack;
+
+        document.getElementById('result').textContent = pass ? 'PASS' : 'FAIL';
+        console.log('TEST RESULT', { pass, passAutosave, passBody, passUndoStack, undoStackLength, lastFetch: window.__lastFetch });
+
+      }catch(err){
+        document.getElementById('result').textContent = 'ERROR: ' + err.message;
+        console.error(err);
+      }
+    })();
+  </script>
+</body>
+</html>

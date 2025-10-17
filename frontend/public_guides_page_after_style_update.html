@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Гайды</title>
+    <style>
+        :root{ --accent:#008d8d; --muted:#6b7b7b; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 28px 24px; color: #222; }
+        h1 { color: var(--accent); margin: 0 0 18px 0; font-size: 28px; }
+        main { margin-top: 18px; }
+        .page-wrapper { border-left: 4px solid var(--accent); padding-left: 18px; }
+        .block { margin: 28px 0; }
+        /* Page header (hero) */
+        .block-page-header { padding: 8px 0 18px 0; }
+        .block-page-header h2 { margin: 0 0 8px 0; font-size: 22px; }
+        .block-page-header p { margin: 0; color: var(--muted); }
+
+        /* Cards grid similar to editor */
+        .block-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; align-items: start; }
+        .card { background:#fff; border-radius:10px; box-shadow:0 6px 18px rgba(25,40,45,0.06); padding:18px; overflow:hidden; }
+        .card .card-image { height:140px; overflow:hidden; border-radius:8px; margin-bottom:12px; }
+        .card .card-image img { width:100%; height:100%; object-fit:cover; display:block; }
+        .card h3 { margin:8px 0 8px 0; font-size:18px; color:#1b2b2b; }
+        .card p { margin:0; color:var(--muted); font-size:14px; line-height:1.5; }
+        .card .read-more { margin-top:12px; display:inline-block; color:var(--accent); text-decoration:none; font-weight:600; }
+
+        /* Button/CTA */
+        .block-button { margin-top: 10px; }
+        .btn { display:inline-block; padding:10px 18px; background:var(--accent); color:#fff; text-decoration:none; border-radius:6px; }
+
+        @media (max-width:640px){
+            body{padding:16px}
+            h1{font-size:22px}
+            .card .card-image{height:120px}
+        }
+    </style>
+</head>
+<body>
+    <h1>Гайды</h1>
+    <main><div class="page-wrapper"><div class="block block-page-header"><h2>Полезные гайды</h2><p>Пошаговые инструкции и проверенные алгоритмы для решения ваших медицинских задач в Бразилии.</p></div><div class="block block-cards"><article class="card"><div class="card-image"><img src="https://images.unsplash.com/photo-1516549655169-df83a0774514?q=80&amp;w=2070&amp;auto=format&amp;fit=crop" alt="Полный гайд по SUS для экспата" style="max-width:200px;display:block;"/></div><h3>Полный гайд по SUS для экспата</h3><p>Пошаговая инструкция, как зарегистрироваться в государственной системе, чего ожидать и как пользоваться ее возможностями...</p></article><article class="card"><div class="card-image"><img src="https://images.unsplash.com/photo-1551076805-e1869033e561?q=80&amp;w=2070&amp;auto=format&amp;fit=crop" alt="Как выбрать частную страховку" style="max-width:200px;display:block;"/></div><h3>Как выбрать частную страховку</h3><p>Разбираем типы страховок (Plano de Saúde), важные пункты в договоре и на что обратить внимание при выборе компании.</p></article><article class="card"><div class="card-image"><img src="https://images.unsplash.com/photo-1587854692152-cbe660dbde88?q=80&amp;w=2070&amp;auto=format&amp;fit=crop" alt="Аналоги лекарств в Бразилии" style="max-width:200px;display:block;"/></div><h3>Аналоги лекарств в Бразилии</h3><p>Полезные сервисы для поиска дженериков, а также особенности рецептов и покупки медикаментов в местных аптеках.</p></article></div><div class="block block-button" style="text-align:center"><a href="#" class="btn">Все гайды</a></div>
+    </main>
+</body>
+</html>

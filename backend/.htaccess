@@ -1,0 +1,16 @@
+RewriteEngine On
+
+# Base path for this .htaccess (adjust to the directory name served by Apache)
+# This helps rewrite rules behave predictably when the app is served from a subpath
+RewriteBase /healthcare-cms-backend
+
+# If request targets uploads/ directory, internally rewrite to public/uploads
+# Keep this rule simple and case-insensitive. It will map:
+#   /healthcare-cms-backend/uploads/FILE  ->  backend/public/uploads/FILE
+RewriteRule ^uploads/(.*)$ public/uploads/$1 [L,NC]
+
+# If the requested resource is not an existing file or directory, forward to
+# the front controller in public/index.php so the app can handle routing.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ public/index.php [QSA,L]

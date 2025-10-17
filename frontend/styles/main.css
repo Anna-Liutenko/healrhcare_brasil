@@ -1,0 +1,14 @@
+/* Main CSS file - imports all stylesheets */
+
+/* Variables and base styles */
+@import url('./variables.css');
+@import url('./base.css');
+
+/* Component styles */
+@import url('./components.css');
+
+/* Layout styles */
+@import url('./layout.css');
+
+/* Responsive styles */
+@import url('./responsive.css');

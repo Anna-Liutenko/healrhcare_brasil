@@ -1,0 +1,83 @@
+name: Playwright E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  playwright:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: healthcare_cms_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_mysql, mbstring
+
+      - name: Install Composer dependencies
+        run: |
+          cd backend
+          php composer.phar install --no-progress --prefer-dist
+
+      - name: Setup database schema
+        run: |
+          mysql -h 127.0.0.1 -u root -proot healthcare_cms_test < database/migrations/001_initial_schema.sql || true
+          mysql -h 127.0.0.1 -u root -proot healthcare_cms_test < database/seeds/001_seed_users.sql || true
+
+      - name: Configure backend for test
+        run: |
+          cd backend/config || exit 0
+          if [ -f database.php.example ]; then cp database.php.example database.php; fi
+          sed -i 's/localhost/127.0.0.1/' database.php || true
+          sed -i 's/healthcare_cms/healthcare_cms_test/' database.php || true
+          sed -i "s/'root', ''/'root', 'root'/" database.php || true
+
+      - name: Start PHP built-in server
+        run: |
+          cd backend/public
+          php -S 127.0.0.1:8000 &
+          sleep 3
+          curl http://127.0.0.1:8000/api/health || true
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          cd frontend/e2e
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        run: |
+          cd frontend/e2e
+          npm test
+        env:
+          BASE_URL: http://127.0.0.1:8000
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/e2e/playwright-report/
+          retention-days: 7

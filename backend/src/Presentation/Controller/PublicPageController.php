@@ -74,6 +74,27 @@ class PublicPageController
                 return;
             }
 
+            // If a pre-rendered HTML exists for a published page, serve it directly
+            $page = $result['page'];
+            
+            // Debug logging
+            @file_put_contents(__DIR__ . '/../../../logs/public-page-debug.log', 
+                date('c') . " | slug=$slug | status=" . ($page['status'] ?? 'null') . 
+                " | has_rendered_html=" . (isset($page['rendered_html']) && !empty($page['rendered_html']) ? 'YES' : 'NO') . 
+                " | rendered_html_length=" . (isset($page['rendered_html']) ? strlen($page['rendered_html']) : 0) . 
+                PHP_EOL, FILE_APPEND | LOCK_EX);
+            
+            if (isset($page['status']) && $page['status'] === 'published' && isset($page['rendered_html']) && !empty($page['rendered_html'])) {
+                @file_put_contents(__DIR__ . '/../../../logs/public-page-debug.log', 
+                    date('c') . " | SERVING PRE-RENDERED HTML for slug=$slug" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                header('Content-Type: text/html; charset=utf-8');
+                // Ensure uploads URLs point to the actual public/uploads path so Apache serves them
+                $fixed = $this->fixUploadsUrls($page['rendered_html']);
+                echo $fixed;
+                exit; // Important: stop execution here
+            }
+
+            // Fallback: runtime render (preview/draft)
             $this->renderPage($result);
         } catch (\Exception $e) {
             // If static template exists, try it
@@ -272,8 +293,29 @@ class PublicPageController
 </body>
 </html>';
         
+        // Fix upload URLs in runtime-generated HTML as well (covers /uploads/... references)
+        $html = $this->fixUploadsUrls($html);
         echo $html;
         exit;
+    }
+
+    /**
+     * Ensure that any references to /uploads/... are rewritten to the public/uploads path
+     * so the local Apache/XAMPP server can serve static files when the webroot includes
+     * the repository subfolder (e.g. /healthcare-cms-backend/public/uploads/...).
+     */
+    private function fixUploadsUrls(string $html): string
+    {
+        // Base prefix to reach files under public/uploads from the site root
+        $publicPrefix = '/healthcare-cms-backend/public';
+
+        // Replace src and href attribute values that start with /uploads/
+        $html = preg_replace("/(src=\'|src=\"|href=\'|href=\")\/uploads\//i", "$1" . $publicPrefix . '/uploads/', $html);
+
+        // Replace CSS url(/uploads/...) occurrences
+        $html = preg_replace("/url\(\s*['\"]?\/uploads\//i", "url(" . $publicPrefix . '/uploads/', $html);
+
+        return $html;
     }
 
     /**

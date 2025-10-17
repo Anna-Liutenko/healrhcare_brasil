@@ -1,0 +1,15 @@
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@600;700&display=swap');
+
+/* CSS Variables (Design System) */
+:root {
+    --bg-main: #F4F4F6;
+    --text-dark: #032A49;
+    --text-secondary: #616E9A;
+    --bg-accent: #E9EAF2;
+    --color-action: #008d8d; /* UPDATED ACCENT COLOR */
+    --color-white: #ffffff;
+
+    --font-heading: 'Montserrat', sans-serif;
+    --font-body: 'Inter', sans-serif;
+}

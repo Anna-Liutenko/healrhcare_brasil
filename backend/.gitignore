@@ -1,0 +1,26 @@
+# Dependencies
+/vendor/
+composer.lock
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/*.log
+logs/archive/
+
+# Uploaded files (development only)
+/public/uploads/*
+!/public/uploads/.gitkeep

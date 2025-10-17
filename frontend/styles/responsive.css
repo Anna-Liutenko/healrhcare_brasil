@@ -1,0 +1,95 @@
+/* Mobile Responsive Styles */
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 2.2rem;
+    }
+
+    h2 {
+        font-size: 1.8rem;
+    }
+
+    section {
+        padding: 4rem 1rem;
+    }
+
+    .main-nav {
+        display: none; /* Simplification for prototype. A real site would need a burger menu. */
+    }
+
+    /* About Me Section on Mobile */
+    .about-me {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        text-align: left;
+    }
+
+    .about-me-photo {
+        margin: 0 auto;
+        max-width: 300px;
+    }
+
+    .sub-heading {
+        text-align: left;
+    }
+
+    h2.text-center {
+        text-align: center; /* Keep main headers centered */
+    }
+
+    p.sub-heading.text-center {
+        text-align: center;
+    }
+
+    .service-card {
+        text-align: left;
+    }
+
+    .service-card .icon {
+        display: flex;
+        justify-content: center;
+    }
+
+    .service-card .icon svg {
+        display: block;
+        margin: 0 auto;
+    }
+
+    .article-card-content {
+        text-align: left;
+    }
+
+    /* Article Content on Mobile */
+    .article-content {
+        text-align: left;
+    }
+
+    .article-content h2 {
+        text-align: left;
+    }
+
+    .article-content blockquote {
+        margin: 2rem 0;
+    }
+
+    .article-content p {
+        padding: 0;
+    }
+
+    .article-image-left {
+        float: none;
+        display: block;
+        margin: 2rem auto;
+        width: 100%;
+        margin-right: 0;
+        margin-bottom: 1.5rem;
+    }
+
+    .page-header {
+        padding: 3rem 0 2.5rem;
+    }
+
+    .page-header .sub-heading {
+        margin-bottom: 1.25rem;
+    }
+}

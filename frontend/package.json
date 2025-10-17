@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.7.1"
+  }
+  ,
+  "scripts": {
+    "test:e2e": "npx playwright test --project=chromium"
+  }
+}

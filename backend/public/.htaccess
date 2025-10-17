@@ -1,0 +1,12 @@
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Ensure correct base when served from a subpath on local Apache (XAMPP)
+    # Adjust this if your local DocumentRoot uses a different subpath.
+    RewriteBase /healthcare-cms-backend/public
+
+    # Redirect to index.php
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>

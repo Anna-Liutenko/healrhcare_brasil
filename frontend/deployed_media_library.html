@@ -1,0 +1,188 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÐÐµÐ´Ð¸Ð°-Ð±Ð¸Ð±Ð»Ð¸Ð¾ÑÐµÐºÐ° - Healthcare CMS</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="media-library.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1>ð ÐÐµÐ´Ð¸Ð°-Ð±Ð¸Ð±Ð»Ð¸Ð¾ÑÐµÐºÐ°</h1>
+            </div>
+            <div class="header-right">
+                <span class="user-info">{{ currentUser?.username || 'Guest' }}</span>
+                <button @click="logout" class="btn-logout">ÐÑÑÐ¾Ð´</button>
+            </div>
+        </header>
+
+        <!-- Navigation (trimmed) -->
+        <nav class="admin-nav">
+            <!-- Removed 'ÐÐµÐ´Ð¸Ð°' nav link per user request; kept navigation minimal -->
+        </nav>
+
+        <!-- Main Content -->
+        <main class="media-library-container">
+            
+            <!-- Toolbar -->
+            <div class="media-toolbar">
+                <div class="toolbar-left">
+                    <button @click="triggerFileInput" class="btn-primary">
+                        ð¤ ÐÐ°Ð³ÑÑÐ·Ð¸ÑÑ ÑÐ°Ð¹Ð»
+                    </button>
+                    <input 
+                        type="file" 
+                        ref="fileInput" 
+                        @change="handleFileSelect"
+                        accept="image/*,.svg"
+                        style="display: none;"
+                        multiple
+                    >
+                    
+                    <!-- Filters simplified: removed tab buttons per UI cleanup request -->
+                </div>
+
+                <div class="toolbar-right">
+                    <input 
+                        type="search" 
+                        v-model="searchQuery"
+                        placeholder="ð ÐÐ¾Ð¸ÑÐº Ð¿Ð¾ Ð¸Ð¼ÐµÐ½Ð¸..."
+                        class="search-input"
+                    >
+                </div>
+            </div>
+
+            <!-- Upload Progress -->
+            <div v-if="uploadProgress > 0 && uploadProgress < 100" class="upload-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{width: uploadProgress + '%'}"></div>
+                </div>
+                <span class="progress-text">ÐÐ°Ð³ÑÑÐ·ÐºÐ°: {{ uploadProgress }}%</span>
+            </div>
+
+            <!-- Drop Zone -->
+            <div 
+                v-if="mediaFiles.length === 0 && !isLoading"
+                class="drop-zone"
+                @dragover.prevent="isDragging = true"
+                @dragleave.prevent="isDragging = false"
+                @drop.prevent="handleDrop"
+                :class="{dragging: isDragging}"
+            >
+                <div class="drop-zone-content">
+                    <div class="drop-icon">ð</div>
+                    <h3>ÐÐµÑÐµÑÐ°ÑÐ¸ÑÐµ ÑÐ°Ð¹Ð»Ñ ÑÑÐ´Ð°</h3>
+                    <p>Ð¸Ð»Ð¸</p>
+                    <button @click="triggerFileInput" class="btn-primary">
+                        ÐÑÐ±ÑÐ°ÑÑ ÑÐ°Ð¹Ð»Ñ
+                    </button>
+                    <p class="hint">ÐÐ¾Ð´Ð´ÐµÑÐ¶Ð¸Ð²Ð°ÑÑÑÑ: JPG, PNG, SVG</p>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="isLoading" class="loading-state">
+                <div class="spinner"></div>
+                <p>ÐÐ°Ð³ÑÑÐ·ÐºÐ° Ð¼ÐµÐ´Ð¸Ð°-ÑÐ°Ð¹Ð»Ð¾Ð²...</p>
+            </div>
+
+            <!-- Error -->
+            <div v-if="error" class="error-message">
+                â ï¸ {{ error }}
+                <button @click="loadMedia" class="btn-retry">ÐÐ¾Ð²ÑÐ¾ÑÐ¸ÑÑ</button>
+            </div>
+
+            <!-- Media Grid -->
+            <div v-if="!isLoading && filteredFiles.length > 0" class="media-grid">
+                <div 
+                    v-for="file in filteredFiles" 
+                    :key="file.id"
+                    class="media-item"
+                    @click="selectFile(file)"
+                >
+                    <!-- Preview -->
+                    <div class="media-preview">
+                        <img 
+                            v-if="file.type === 'image'" 
+                            :src="getFileUrl(file.url)" 
+                            :alt="file.filename"
+                            :data-file-url="file.url"
+                            :data-filename="file.filename"
+                            @error="handleImageError"
+                        >
+                        <div v-else class="file-icon">ð</div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="media-info">
+                        <div class="media-filename" :title="file.filename">
+                            {{ file.filename }}
+                        </div>
+                        <div class="media-meta">
+                            <span class="file-size">{{ file.human_size }}</span>
+                            <span class="file-date">{{ formatDate(file.uploaded_at) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="media-actions">
+                        <button 
+                            @click.stop="copyUrl(file)"
+                            class="btn-icon"
+                            title="ÐÐ¾Ð¿Ð¸ÑÐ¾Ð²Ð°ÑÑ URL"
+                        >
+                            ð
+                        </button>
+                        <button 
+                            @click.stop="deleteFile(file)"
+                            class="btn-icon btn-danger"
+                            title="Ð£Ð´Ð°Ð»Ð¸ÑÑ"
+                        >
+                            ðï¸
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="!isLoading && filteredFiles.length === 0 && mediaFiles.length > 0" class="empty-state">
+                <p>Ð¤Ð°Ð¹Ð»Ñ Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ñ Ð¿Ð¾ Ð·Ð°Ð¿ÑÐ¾ÑÑ "{{ searchQuery }}"</p>
+            </div>
+
+        </main>
+
+        <!-- Delete Confirmation Modal -->
+        <div v-if="fileToDelete" class="modal-overlay" @click="cancelDelete">
+            <div class="modal-dialog" @click.stop>
+                <div class="modal-header">
+                    <h3>ÐÐ¾Ð´ÑÐ²ÐµÑÐ¶Ð´ÐµÐ½Ð¸Ðµ ÑÐ´Ð°Ð»ÐµÐ½Ð¸Ñ</h3>
+                    <button @click="cancelDelete" class="btn-close">Ã</button>
+                </div>
+                <div class="modal-body">
+                    <p>ÐÑ ÑÐ²ÐµÑÐµÐ½Ñ, ÑÑÐ¾ ÑÐ¾ÑÐ¸ÑÐµ ÑÐ´Ð°Ð»Ð¸ÑÑ ÑÐ°Ð¹Ð»?</p>
+                    <p class="file-name">{{ fileToDelete.filename }}</p>
+                    <p class="warning">â ï¸ Ð­ÑÐ¾ Ð´ÐµÐ¹ÑÑÐ²Ð¸Ðµ Ð½ÐµÐ»ÑÐ·Ñ Ð¾ÑÐ¼ÐµÐ½Ð¸ÑÑ!</p>
+                </div>
+                <div class="modal-footer">
+                    <button @click="cancelDelete" class="btn-secondary">ÐÑÐ¼ÐµÐ½Ð°</button>
+                    <button @click="confirmDelete" class="btn-danger">Ð£Ð´Ð°Ð»Ð¸ÑÑ</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Toast -->
+        <div v-if="successMessage" class="toast toast-success">
+            â {{ successMessage }}
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+    <script type="module" src="media-library.js"></script>
+</body>
+</html>
+

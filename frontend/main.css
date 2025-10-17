@@ -1,0 +1,16 @@
+/* Main CSS file - imports all modular stylesheets */
+
+/* Variables and fonts */
+@import url('styles/variables.css');
+
+/* Base styles and reset */
+@import url('styles/base.css');
+
+/* Reusable components */
+@import url('styles/components.css');
+
+/* Layout components */
+@import url('styles/layout.css');
+
+/* Responsive styles */
+@import url('styles/responsive.css');

@@ -1,0 +1,64 @@
+{
+    "pageId": "e9b19c07-8097-4819-84d1-3e7743c282cc",
+    "slug": "e2e-test-32f1d3b6",
+    "menu": {
+        "success": true,
+        "data": [
+            {
+                "label": "\tГлавная страница",
+                "url": "\/home",
+                "slug": "home",
+                "position": 1
+            },
+            {
+                "label": "Гайды",
+                "url": "\/guides",
+                "slug": "guides",
+                "position": 2
+            },
+            {
+                "label": "Блог",
+                "url": "\/blog",
+                "slug": "blog",
+                "position": 3
+            },
+            {
+                "label": "Все материалы",
+                "url": "\/all-materials",
+                "slug": "all-materials",
+                "position": 4
+            },
+            {
+                "label": "Бот-помощник",
+                "url": "\/bot",
+                "slug": "bot",
+                "position": 5
+            },
+            {
+                "label": "E2E Test Page",
+                "url": "\/e2e-test-32f1d3b6",
+                "slug": "e2e-test-32f1d3b6",
+                "position": 0
+            },
+            {
+                "label": "E2E Test Page",
+                "url": "\/e2e-test-91d13d94",
+                "slug": "e2e-test-91d13d94",
+                "position": 0
+            },
+            {
+                "label": "E2E Test Page",
+                "url": "\/e2e-test-8bc9da94",
+                "slug": "e2e-test-8bc9da94",
+                "position": 0
+            },
+            {
+                "label": "E2E Test Page",
+                "url": "\/e2e-test-7210f872",
+                "slug": "e2e-test-7210f872",
+                "position": 0
+            }
+        ]
+    },
+    "html": "<!DOCTYPE html>\r\n<html lang=\"ru\">\r\n<head>\r\n    <meta charset=\"UTF-8\">\r\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\r\n    <title>E2E Test Page<\/title>\r\n    <link rel=\"stylesheet\" href=\"\/healthcare-cms-frontend\/styles.css\">\r\n    <link rel=\"stylesheet\" href=\"\/healthcare-cms-frontend\/editor-preview.css\">\r\n    <style>\r\n        \/* Public page styles matching prototype (Figma view) *\/\r\n        body { \r\n            background-color: #d1d3e0; \r\n            margin: 0;\r\n            padding: 0;\r\n        }\r\n        .page-wrapper { \r\n            background-color: #F4F4F6;\r\n            margin: 40px auto;\r\n            max-width: 1400px;\r\n            box-shadow: 0 10px 40px rgba(0,0,0,0.1);\r\n            border: 1px solid #ccc;\r\n            overflow: hidden;\r\n        }\r\n        main { padding: 0; }\r\n    <\/style>\r\n<\/head>\r\n<body>\r\n    <div class=\"page-wrapper\">\r\n        <header class=\"main-header\">\r\n            <div class=\"container\">\r\n                <a href=\"\/\" class=\"logo\">E2E Test Page<\/a>\r\n                <nav class=\"main-nav\"><ul><li><a href=\"\/\">Главная<\/a><\/li><\/ul><\/nav>\r\n            <\/div>\r\n        <\/header>\r\n    <main><div class=\"page-wrapper\">\r\n    <\/main>\r\n<\/body>\r\n<\/html>"
+}

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Медиа-библиотека - Healthcare CMS</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="media-library.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1>📁 Медиа-библиотека</h1>
+            </div>
+            <div class="header-right">
+                <span class="user-info">{{ currentUser?.username || 'Guest' }}</span>
+                <button @click="logout" class="btn-logout">Выход</button>
+            </div>
+        </header>
+
+        <!-- Navigation (trimmed) -->
+        <nav class="admin-nav">
+            <!-- Removed 'Медиа' nav link per user request; kept navigation minimal -->
+        </nav>
+
+        <!-- Main Content -->
+        <main class="media-library-container">
+            
+            <!-- Toolbar -->
+            <div class="media-toolbar">
+                <div class="toolbar-left">
+                    <button @click="triggerFileInput" class="btn-primary">
+                        📤 Загрузить файл
+                    </button>
+                    <input 
+                        type="file" 
+                        ref="fileInput" 
+                        @change="handleFileSelect"
+                        accept="image/*,.svg"
+                        style="display: none;"
+                        multiple
+                    >
+                    
+                    <!-- Filters simplified: removed tab buttons per UI cleanup request -->
+                </div>
+
+                <div class="toolbar-right">
+                    <input 
+                        type="search" 
+                        v-model="searchQuery"
+                        placeholder="🔍 Поиск по имени..."
+                        class="search-input"
+                    >
+                </div>
+            </div>
+
+            <!-- Upload Progress -->
+            <div v-if="uploadProgress > 0 && uploadProgress < 100" class="upload-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" :style="{width: uploadProgress + '%'}"></div>
+                </div>
+                <span class="progress-text">Загрузка: {{ uploadProgress }}%</span>
+            </div>
+
+            <!-- Drop Zone -->
+            <div 
+                v-if="mediaFiles.length === 0 && !isLoading"
+                class="drop-zone"
+                @dragover.prevent="isDragging = true"
+                @dragleave.prevent="isDragging = false"
+                @drop.prevent="handleDrop"
+                :class="{dragging: isDragging}"
+            >
+                <div class="drop-zone-content">
+                    <div class="drop-icon">📁</div>
+                    <h3>Перетащите файлы сюда</h3>
+                    <p>или</p>
+                    <button @click="triggerFileInput" class="btn-primary">
+                        Выбрать файлы
+                    </button>
+                    <p class="hint">Поддерживаются: JPG, PNG, SVG</p>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div v-if="isLoading" class="loading-state">
+                <div class="spinner"></div>
+                <p>Загрузка медиа-файлов...</p>
+            </div>
+
+            <!-- Error -->
+            <div v-if="error" class="error-message">
+                ⚠️ {{ error }}
+                <button @click="loadMedia" class="btn-retry">Повторить</button>
+            </div>
+
+            <!-- Media Grid -->
+            <div v-if="!isLoading && filteredFiles.length > 0" class="media-grid">
+                <div 
+                    v-for="file in filteredFiles" 
+                    :key="file.id"
+                    class="media-item"
+                    @click="selectFile(file)"
+                >
+                    <!-- Preview -->
+                    <div class="media-preview">
+                        <img 
+                            v-if="file.type === 'image'" 
+                            :src="getFileUrl(file.url)" 
+                            :alt="file.filename"
+                            :data-file-url="file.url"
+                            :data-filename="file.filename"
+                            @error="handleImageError"
+                        >
+                        <div v-else class="file-icon">📄</div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="media-info">
+                        <div class="media-filename" :title="file.filename">
+                            {{ file.filename }}
+                        </div>
+                        <div class="media-meta">
+                            <span class="file-size">{{ file.human_size }}</span>
+                            <span class="file-date">{{ formatDate(file.uploaded_at) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="media-actions">
+                        <button 
+                            @click.stop="copyUrl(file)"
+                            class="btn-icon"
+                            title="Копировать URL"
+                        >
+                            📋
+                        </button>
+                        <button 
+                            @click.stop="deleteFile(file)"
+                            class="btn-icon btn-danger"
+                            title="Удалить"
+                        >
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="!isLoading && filteredFiles.length === 0 && mediaFiles.length > 0" class="empty-state">
+                <p>Файлы не найдены по запросу "{{ searchQuery }}"</p>
+            </div>
+
+        </main>
+
+        <!-- Delete Confirmation Modal -->
+        <div v-if="fileToDelete" class="modal-overlay" @click="cancelDelete">
+            <div class="modal-dialog" @click.stop>
+                <div class="modal-header">
+                    <h3>Подтверждение удаления</h3>
+                    <button @click="cancelDelete" class="btn-close">×</button>
+                </div>
+                <div class="modal-body">
+                    <p>Вы уверены, что хотите удалить файл?</p>
+                    <p class="file-name">{{ fileToDelete.filename }}</p>
+                    <p class="warning">⚠️ Это действие нельзя отменить!</p>
+                </div>
+                <div class="modal-footer">
+                    <button @click="cancelDelete" class="btn-secondary">Отмена</button>
+                    <button @click="confirmDelete" class="btn-danger">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Toast -->
+        <div v-if="successMessage" class="toast toast-success">
+            ✅ {{ successMessage }}
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@3.3.4/dist/vue.global.prod.js"></script>
+    <script type="module" src="media-library.js"></script>
+</body>
+</html>

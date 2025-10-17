@@ -1,0 +1,51 @@
+<?php
+
+namespace Application\UseCase;
+
+use Domain\Repository\MediaRepositoryInterface;
+use InvalidArgumentException;
+
+/**
+ * Use Case: Delete Media
+ *
+ * Deletes a media file from database and filesystem
+ */
+class DeleteMedia
+{
+    private MediaRepositoryInterface $mediaRepository;
+    private string $uploadDir;
+
+    public function __construct(MediaRepositoryInterface $mediaRepository, string $uploadDir = null)
+    {
+        $this->mediaRepository = $mediaRepository;
+        $this->uploadDir = $uploadDir ?? __DIR__ . '/../../../public/uploads';
+    }
+
+    /**
+     * Execute the use case
+     *
+     * @param string $mediaId Media file ID
+     * @throws InvalidArgumentException
+     */
+    public function execute(string $mediaId): void
+    {
+        // Find media file
+        $mediaFile = $this->mediaRepository->findById($mediaId);
+        if (!$mediaFile) {
+            throw new InvalidArgumentException('Media file not found');
+        }
+
+        // Delete physical file
+        $filename = basename($mediaFile->getUrl());
+        $filepath = $this->uploadDir . '/' . $filename;
+
+        if (file_exists($filepath)) {
+            if (!unlink($filepath)) {
+                throw new InvalidArgumentException('Failed to delete physical file');
+            }
+        }
+
+        // Delete from database
+        $this->mediaRepository->delete($mediaId);
+    }
+}

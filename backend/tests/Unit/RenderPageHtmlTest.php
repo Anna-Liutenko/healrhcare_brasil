@@ -21,6 +21,16 @@ class StubBlockRepository implements \Domain\Repository\BlockRepositoryInterface
         return $this->blocks;
     }
 
+    public function findByClientId(string $clientId): ?\Domain\Entity\Block
+    {
+        foreach ($this->blocks as $b) {
+            if (method_exists($b, 'getClientId') && $b->getClientId() === $clientId) {
+                return $b;
+            }
+        }
+        return null;
+    }
+
     // Other interface methods are not used in this test; implement stubs
     public function save(Block $block): void {}
     public function delete(string $id): void {}

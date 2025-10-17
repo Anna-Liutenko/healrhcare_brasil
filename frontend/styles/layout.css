@@ -1,0 +1,168 @@
+/* Layout Components */
+
+/* Header & Navigation */
+.main-header {
+    background: rgba(244, 244, 246, 0.9);
+    backdrop-filter: blur(10px);
+    padding: 1.25rem 0;
+    border-bottom: 1px solid rgba(3, 42, 73, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.main-header .container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    font-family: var(--font-heading);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+.main-nav ul {
+    list-style: none;
+    display: flex;
+    gap: 2.5rem;
+}
+
+.main-nav a {
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: color 0.3s ease;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+    color: var(--text-dark);
+}
+
+/* Hero Section */
+.hero {
+    text-align: center;
+    padding: 8rem 0;
+    position: relative;
+    background-image: linear-gradient(rgba(3, 42, 73, 0.6), rgba(3, 42, 73, 0.6)),
+                      url('https://images.unsplash.com/photo-1506929562872-bb421503ef21?q=80&w=2070&auto=format&fit=crop');
+    background-size: cover;
+    background-position: center 50%;
+}
+
+.hero p {
+    font-size: 1.1rem;
+    max-width: 650px;
+    margin: 1.5rem auto 2.5rem;
+    color: rgba(255,255,255,0.9);
+}
+
+/* Page Header */
+.page-header {
+    padding: 4rem 0 3rem;
+    text-align: center;
+}
+
+.page-header .sub-heading {
+    margin-bottom: 1.75rem;
+}
+
+.page-header h1,
+.page-header p {
+    position: relative;
+    z-index: 1;
+}
+
+/* Unifying Background */
+.unified-background {
+    background: linear-gradient(180deg, var(--bg-accent) 0%, var(--bg-main) 100%);
+}
+
+/* Services Section ("Чем я могу помочь") */
+#services {
+    /* Align with requested color */
+    background-color: #f4f4f6;
+}
+
+/* About Me Section */
+.about-section {
+    background-color: var(--bg-accent);
+}
+
+.about-me {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    align-items: center;
+    gap: 4rem;
+}
+
+.about-me-photo {
+    width: 100%;
+    border-radius: 12px;
+    object-fit: cover;
+    aspect-ratio: 1/1.2;
+    box-shadow: 10px 10px 0px var(--color-action);
+}
+
+/* Article Page Specific */
+.article-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.article-content {
+    text-align: left;
+}
+
+.article-content h2 {
+    font-size: 2.5rem;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.article-content p {
+    font-size: 1.1rem;
+    line-height: 1.8;
+}
+
+.article-content blockquote {
+    margin: 2rem 0;
+    padding: 1rem 2rem;
+    border-left: 4px solid var(--color-action);
+    background-color: var(--bg-accent);
+    font-style: italic;
+    font-size: 1.2rem;
+    color: var(--text-dark);
+    text-align: left;
+}
+
+.article-image-left {
+    float: left;
+    display: block;
+    width: 45%;
+    max-width: 400px;
+    margin: 0 2rem 1.5rem 0;
+    height: auto;
+    border-radius: 12px;
+}
+
+/* Footer */
+.main-footer {
+    background: var(--bg-accent);
+    color: var(--text-secondary);
+    padding: 2rem 0;
+    text-align: center;
+}
+
+.main-footer p {
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.main-footer .logo {
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+    display: inline-block;
+}

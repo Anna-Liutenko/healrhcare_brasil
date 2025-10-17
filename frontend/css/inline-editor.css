@@ -1,0 +1,115 @@
+/* Inline Editor Styles (Stage 1 skeleton) */
+:root{
+  --inline-accent: #0b7a5f; /* stronger accent */
+  --inline-accent-weak: rgba(11,122,95,0.14);
+  --inline-focus: #005ea6;
+  --inline-error: #c62828;
+}
+
+.inline-editable-hover {
+  box-shadow: 0 0 0 3px var(--inline-accent-weak) inset;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.08s ease;
+  position: relative;
+}
+
+.inline-editable-hover::after {
+  content: '✏️';
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  background: var(--inline-accent);
+  color: #fff;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  pointer-events: none;
+  z-index: 2000;
+}
+
+[contenteditable="true"] {
+  box-shadow: 0 0 0 3px var(--inline-accent-weak) inset;
+  background-color: rgba(11,122,95,0.04);
+  padding: 6px;
+  min-height: 22px;
+  transition: background-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+[contenteditable="true"]:focus {
+  box-shadow: 0 0 0 3px rgba(0,94,166,0.16) inset;
+  background-color: rgba(0,94,166,0.04);
+}
+
+[contenteditable="true"]:empty::before {
+  content: 'Введите текст...';
+  color: #999;
+  font-style: italic;
+}
+
+/* Tooltip for inline editing */
+.inline-tooltip {
+  position: fixed;
+  display: none;
+  background: rgba(33,33,33,0.92);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  z-index: 9999;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* brief saved highlight */
+
+.inline-saved {
+  box-shadow: 0 0 0 4px rgba(11,122,95,0.26) inset;
+  transition: box-shadow 0.22s ease;
+}
+
+/* brief error highlight */
+.inline-save-error {
+  box-shadow: 0 0 0 4px rgba(198,40,40,0.28) inset;
+  transition: box-shadow 0.22s ease;
+}
+
+/* Inline notify styles */
+.inline-notify {
+  opacity: 0.98;
+}
+.inline-notify-info { background: #333; }
+.inline-notify-success { background: #4CAF50; }
+.inline-notify-error { background: #F44336; }
+
+/* Inline modal styles */
+.inline-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+.inline-modal {
+  background: white;
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  max-width: 520px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.inline-modal-body { margin-bottom: 0.75rem; }
+.inline-modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+.inline-modal-actions button { padding: 0.45rem 0.8rem; border-radius: 6px; border: none; cursor: pointer; }
+.inline-modal-actions #inline-confirm-yes { background: #4CAF50; color: #fff; }
+.inline-modal-actions #inline-confirm-no { background: #eee; }
+
+/* Header notifications */
+#header-notify { display: flex; gap: 8px; align-items: center; }
+#header-notify .header-notify-item { padding: 6px 10px; border-radius: 6px; color: #fff; font-size: 0.9rem; }
+#header-notify .header-notify-success { background: #4CAF50; }
+#header-notify .header-notify-error { background: #F44336; }

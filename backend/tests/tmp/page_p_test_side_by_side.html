@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Page /p/test — Side-by-side</title>
+  <style>
+    html,body{height:100%;margin:0}
+    .container{display:flex;height:100vh}
+    iframe{flex:1;border:1px solid #ccc;height:100%;width:50%;}
+    .panel{flex:1;display:flex;flex-direction:column}
+    header{padding:8px;background:#f6f6f6;border-bottom:1px solid #ddd}
+    .labels{display:flex;gap:12px;align-items:center}
+    .labels div{padding:6px 10px;background:#fff;border:1px solid #ddd;border-radius:4px}
+    .note{font-size:12px;color:#666;margin-left:8px}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="labels">
+      <div><strong>Left:</strong> before snapshot</div>
+      <div><strong>Right:</strong> after-deploy snapshot</div>
+      <div class="note">Scrolls are synchronized. Use browser zoom for side-by-side comparison.</div>
+    </div>
+  </header>
+  <div class="container">
+    <iframe id="left" src="page_p_test_after.html"></iframe>
+    <iframe id="right" src="page_p_test_live_after_deploy.html"></iframe>
+  </div>
+
+  <script>
+    // Synchronize scroll between iframes
+    const left = document.getElementById('left');
+    const right = document.getElementById('right');
+
+    function syncScroll(src, dst){
+      try{
+        const r = src.contentWindow.document.documentElement || src.contentWindow.document.body;
+        const d = dst.contentWindow.document.documentElement || dst.contentWindow.document.body;
+        const ratioY = r.scrollTop / Math.max(1, (r.scrollHeight - r.clientHeight));
+        const ratioX = r.scrollLeft / Math.max(1, (r.scrollWidth - r.clientWidth));
+        d.scrollTop = Math.round(ratioY * Math.max(0, d.scrollHeight - d.clientHeight));
+        d.scrollLeft = Math.round(ratioX * Math.max(0, d.scrollWidth - d.clientWidth));
+      }catch(e){ /* cross-origin will fail if files are not served; works for local files */ }
+    }
+
+    function attachSync(a,b){
+      a.addEventListener('load', ()=>{
+        try{ a.contentWindow.addEventListener('scroll', ()=>syncScroll(a,b)); }catch(e){}
+      });
+    }
+    attachSync(left,right);
+    attachSync(right,left);
+  </script>
+</body>
+</html>
