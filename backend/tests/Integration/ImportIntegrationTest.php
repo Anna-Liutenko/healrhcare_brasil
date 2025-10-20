@@ -1,1 +1,111 @@
-<?phpdeclare(strict_types=1);namespace Tests\Integration;use PHPUnit\Framework\TestCase;use Infrastructure\Database\Connection;use Application\UseCase\ImportStaticTemplate;use Infrastructure\Repository\FileSystemStaticTemplateRepository;use Infrastructure\Parser\HtmlTemplateParser;use Infrastructure\Repository\MySQLPageRepository;use Infrastructure\Repository\MySQLBlockRepository;use Infrastructure\Repository\MySQLUserRepository;use Infrastructure\Repository\MySQLSessionRepository;class ImportIntegrationTest extends TestCase{    private \PDO $pdo;    protected function setUp(): void    {        // Use bootstrap-injected PDO when running via phpunit --bootstrap; fall back to creating one        if (!empty($GLOBALS['TEST_PDO'])) {            $this->pdo = $GLOBALS['TEST_PDO'];        } else {            // create sqlite in-memory DB and set schema minimally for pages/blocks/users/sessions            $this->pdo = new \PDO('sqlite::memory:');            $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);        }        $this->createSchema();        // seed a user        $stmt = $this->pdo->prepare('INSERT INTO users (id, username, email, password_hash, role, is_active, created_at) VALUES (:id, :username, :email, :password_hash, :role, 1, datetime("now"))');        $stmt->execute([            'id' => 'test-user-1',            'username' => 'testuser',            'email' => 'test@example.com',            'password_hash' => password_hash('pass', PASSWORD_DEFAULT),            'role' => 'admin'        ]);        // create session (token)        $token = bin2hex(random_bytes(8));        $stmt = $this->pdo->prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (:id, :user_id, datetime("now", "+1 day"))');        $stmt->execute(['id' => $token, 'user_id' => 'test-user-1']);        // Ensure backend/templates directory exists        $backendTemplatesDir = dirname(__DIR__, 2) . '/templates';        if (!file_exists($backendTemplatesDir)) {            mkdir($backendTemplatesDir, 0777, true);        }        // Ensure article.html exists for test (FileSystemStaticTemplateRepository expects it)        $articlePath = $backendTemplatesDir . '/article.html';        if (!file_exists($articlePath)) {            file_put_contents($articlePath, "<html><head><title>Test Article</title></head><body><div data-block='{\"type\":\"text-block\"}'>Test content</div></body></html>");        }        // Ensure .imported_templates.json exists        $importedCachePath = $backendTemplatesDir . '/.imported_templates.json';        if (!file_exists($importedCachePath)) {            file_put_contents($importedCachePath, json_encode([]));        }        // create a simple template file in tests fixtures (we'll rely on repo to find it by slug)        $templatesDir = dirname(__DIR__, 2) . '/templates';        if (!is_dir($templatesDir)) {            mkdir($templatesDir, 0777, true);        }        file_put_contents($templatesDir . '/article.html', "<html><head><title>Test</title></head><body><div data-block='{" . '"type":"text-block"' . "}'>Hello</div></body></html>");        // create imported_templates json        file_put_contents($templatesDir . '/.imported_templates.json', json_encode([]));        // Create a minimal FileSystemStaticTemplateRepository mapping via file (it expects backend/templates by default) - we'll point it to our fixtures by creating a small map file        $map = [            ['slug' => 'article', 'title' => 'Simple Test', 'filePath' => $templatesDir . '/article.html', 'suggestedType' => 'regular']        ];        file_put_contents($templatesDir . '/templates_map.json', json_encode($map));    }    private function createSchema(): void    {        $sql = file_get_contents(__DIR__ . '/schema/sqlite_schema.sql');        $this->pdo->exec($sql);    }    public function testImportCreatesPageAndBlocks(): void    {        $templateRepo = new FileSystemStaticTemplateRepository(/* uses templates dir by discovery */);        $pageRepo = new MySQLPageRepository();        $blockRepo = new MySQLBlockRepository();        $parser = new HtmlTemplateParser();        $useCase = new ImportStaticTemplate($templateRepo, $pageRepo, $blockRepo, $parser);        $pageId = $useCase->execute('article', 'test-user-1', false);        $this->assertNotEmpty($pageId);        $page = $pageRepo->findById($pageId);        $this->assertNotNull($page);        $this->assertEquals('Test', $page->getTitle());        $blocks = $blockRepo->findByPageId($pageId);        $this->assertCount(1, $blocks);    }}
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Integration;
+
+use PHPUnit\Framework\TestCase;
+use Infrastructure\Database\Connection;
+use Application\UseCase\ImportStaticTemplate;
+use Infrastructure\Repository\FileSystemStaticTemplateRepository;
+use Infrastructure\Parser\HtmlTemplateParser;
+use Infrastructure\Repository\MySQLPageRepository;
+use Infrastructure\Repository\MySQLBlockRepository;
+use Infrastructure\Repository\MySQLUserRepository;
+use Infrastructure\Repository\MySQLSessionRepository;
+
+class ImportIntegrationTest extends TestCase
+{
+    private \PDO $pdo;
+
+    protected function setUp(): void
+    {
+        // Use bootstrap-injected PDO when running via phpunit --bootstrap; fall back to creating one
+        if (!empty($GLOBALS['TEST_PDO'])) {
+            $this->pdo = $GLOBALS['TEST_PDO'];
+        } else {
+            // create sqlite in-memory DB and set schema minimally for pages/blocks/users/sessions
+            $this->pdo = new \PDO('sqlite::memory:');
+            $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
+        }
+
+        $this->createSchema();
+
+        // seed a user
+        $stmt = $this->pdo->prepare('INSERT INTO users (id, username, email, password_hash, role, is_active, created_at) VALUES (:id, :username, :email, :password_hash, :role, 1, datetime("now"))');
+        $stmt->execute([
+            'id' => 'test-user-1',
+            'username' => 'testuser',
+            'email' => 'test@example.com',
+            'password_hash' => password_hash('pass', PASSWORD_DEFAULT),
+            'role' => 'admin'
+        ]);
+
+        // create session (token)
+    $token = bin2hex(random_bytes(8));
+    $csrf = bin2hex(random_bytes(8));
+    $stmt = $this->pdo->prepare('INSERT INTO sessions (id, user_id, expires_at, csrf_token) VALUES (:id, :user_id, datetime("now", "+1 day"), :csrf)');
+    $stmt->execute(['id' => $token, 'user_id' => 'test-user-1', 'csrf' => $csrf]);
+
+        // Ensure backend/templates directory exists
+        $backendTemplatesDir = dirname(__DIR__, 2) . '/templates';
+        if (!file_exists($backendTemplatesDir)) {
+            mkdir($backendTemplatesDir, 0777, true);
+        }
+
+        // Ensure article.html exists for test (FileSystemStaticTemplateRepository expects it)
+        $articlePath = $backendTemplatesDir . '/article.html';
+        if (!file_exists($articlePath)) {
+            file_put_contents($articlePath, "<html><head><title>Test Article</title></head><body><div data-block='{\"type\":\"text-block\"}'>Test content</div></body></html>");
+        }
+
+        // Ensure .imported_templates.json exists
+        $importedCachePath = $backendTemplatesDir . '/.imported_templates.json';
+        if (!file_exists($importedCachePath)) {
+            file_put_contents($importedCachePath, json_encode([]));
+        }
+
+        // create a simple template file in tests fixtures (we'll rely on repo to find it by slug)
+        $templatesDir = dirname(__DIR__, 2) . '/templates';
+        if (!is_dir($templatesDir)) {
+            mkdir($templatesDir, 0777, true);
+        }
+        file_put_contents($templatesDir . '/article.html', "<html><head><title>Test</title></head><body><div data-block='{" . '"type":"text-block"' . "}'>Hello</div></body></html>");
+
+        // create imported_templates json
+        file_put_contents($templatesDir . '/.imported_templates.json', json_encode([]));
+
+        // Create a minimal FileSystemStaticTemplateRepository mapping via file (it expects backend/templates by default) - we'll point it to our fixtures by creating a small map file
+        $map = [
+            ['slug' => 'article', 'title' => 'Simple Test', 'filePath' => $templatesDir . '/article.html', 'suggestedType' => 'regular']
+        ];
+        file_put_contents($templatesDir . '/templates_map.json', json_encode($map));
+    }
+
+    private function createSchema(): void
+    {
+        $sql = file_get_contents(__DIR__ . '/schema/sqlite_schema.sql');
+        $this->pdo->exec($sql);
+    }
+
+    public function testImportCreatesPageAndBlocks(): void
+    {
+        $templateRepo = new FileSystemStaticTemplateRepository(/* uses templates dir by discovery */);
+        $pageRepo = new MySQLPageRepository();
+        $blockRepo = new MySQLBlockRepository();
+        $parser = new HtmlTemplateParser();
+
+        $useCase = new ImportStaticTemplate($templateRepo, $pageRepo, $blockRepo, $parser);
+
+        $pageId = $useCase->execute('article', 'test-user-1', false);
+
+        $this->assertNotEmpty($pageId);
+
+        $page = $pageRepo->findById($pageId);
+        $this->assertNotNull($page);
+        $this->assertEquals('Test', $page->getTitle());
+
+        $blocks = $blockRepo->findByPageId($pageId);
+        $this->assertCount(1, $blocks);
+    }
+}

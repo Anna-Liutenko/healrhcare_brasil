@@ -1,3 +1,51 @@
+# Backend Current State
+
+## Implementation Progress
+
+### Phase 0-1: Infrastructure (✅ COMPLETE 100%)
+- ✅ DI Container (`bootstrap/container.php`)
+- ✅ Domain Exceptions (PageNotFoundException, BlockNotFoundException)
+- ✅ DTOs (10 Request/Response pairs created)
+
+### Phase 2: Use Cases Refactoring (✅ 70-80% COMPLETE)
+**Completed:**
+- ✅ UpdatePageInline — uses DTO + Domain Exceptions
+- ✅ GetPageWithBlocks — uses DTO
+- ✅ CreatePage — uses DTO
+- ✅ DeletePage — uses DTO
+- ✅ PublishPage — uses DTO
+
+**Remaining:**
+- ⏳ UpdatePage — partially refactored (needs full DTO adoption)
+- ⏳ GetAllPages — returns array, needs DTO wrapper
+- ⏳ RenderPageHtml — needs review
+
+### Phase 3: Controllers Refactoring (✅ 40-50% COMPLETE)
+**Completed:**
+- ✅ PageController — uses constructor injection (7 use cases)
+- ✅ index.php — uses `$container->make(PageController::class)`
+
+**Remaining:**
+- ⏳ AuthController — still instantiated directly (needs DI)
+- ⏳ MenuController — needs DI
+- ⏳ MediaController — needs DI
+- ⏳ UserController — needs DI
+- ⏳ SettingsController — needs DI
+
+### Phase 4: Response Format Standardization (✅ COMPLETE)
+**Problem discovered:** Backend returns mixed snake_case/camelCase in responses.
+
+**Solution implemented:**
+- ✅ Phase 1: JsonSerializer hotfix (automatic camelCase conversion)
+- ✅ Phase 2: EntityToArrayTransformer (proper architecture)
+- ✅ Phase 3: Documentation updates
+
+**Status:** All phases complete. Sync layer problem resolved.
+
+See: `docs/SYNC_LAYER_PROBLEM_ANALYSIS.md`
+
+---
+
 Текущее состояние бэкенда (кратко)
 
 1) Общая картина

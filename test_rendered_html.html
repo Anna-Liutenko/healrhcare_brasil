@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Тестирование сохранения rendered_html</title>
+</head>
+<body>
+<h1>Тест сохранения rendered_html</h1>
+
+<button onclick="testSave()">Создать тестовую страницу</button>
+<pre id="result"></pre>
+
+<script>
+async function testSave() {
+    const pageData = {
+        title: 'Тестовая страница ' + new Date().getTime(),
+        slug: 'test-' + new Date().getTime(),
+        status: 'draft',
+        type: 'article',
+        blocks: [
+            {
+                type: 'text-block',
+                position: 0,
+                data: {content: '<h2>Заголовок</h2><p>Тестовый блок</p>'},
+                containerStyle: 'article'
+            }
+        ],
+        renderedHtml: '<section class="article-block"><div><h2>Заголовок</h2><p>Тестовый блок</p></div></section>'
+    };
+
+    const result = document.getElementById('result');
+    
+    try {
+        const response = await fetch('http://localhost/healthcare-cms-backend/api/pages', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+            },
+            body: JSON.stringify(pageData)
+        });
+
+        const json = await response.json();
+        result.textContent = JSON.stringify(json, null, 2);
+        
+        if (json.id) {
+            // Проверим БД
+            setTimeout(() => {
+                checkDatabase(json.id);
+            }, 500);
+        }
+    } catch(e) {
+        result.textContent = 'Ошибка: ' + e.message;
+    }
+}
+
+async function checkDatabase(pageId) {
+    const result = document.getElementById('result');
+    try {
+        const response = await fetch(`http://localhost/healthcare-cms-backend/api/pages/${pageId}`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+            }
+        });
+        
+        const json = await response.json();
+        result.textContent += '\n\n=== ЧТО В БД ===\n' + JSON.stringify(json, null, 2);
+    } catch(e) {
+        result.textContent += '\nОшибка проверки: ' + e.message;
+    }
+}
+</script>
+</body>
+</html>

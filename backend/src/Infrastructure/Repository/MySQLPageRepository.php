@@ -59,6 +59,23 @@ class MySQLPageRepository implements PageRepositoryInterface
         return array_map(fn($row) => $this->hydrate($row), $rows);
     }
 
+    /**
+     * Convenience: Find pages by raw type string and status string
+     * This bridges older code that uses string types instead of PageType/PageStatus objects
+     *
+     * @param string $type
+     * @param string $status
+     * @return array
+     */
+    public function findByTypeAndStatus(string $type, string $status): array
+    {
+        $stmt = $this->db->prepare('SELECT * FROM pages WHERE type = :type AND status = :status ORDER BY published_at DESC');
+        $stmt->execute(['type' => $type, 'status' => $status]);
+        $rows = $stmt->fetchAll();
+
+        return array_map(fn($row) => $this->hydrate($row), $rows);
+    }
+
     public function findByType(PageType $type, ?PageStatus $status = null): array
     {
         if ($status) {

@@ -40,15 +40,15 @@ if (!$container->has('HTMLSanitizer')) {
     });
 }
 
-// Register repositories
-$container->singleton('BlockRepository', fn() => new MySQLBlockRepository());
-$container->singleton('PageRepository', fn() => new MySQLPageRepository());
-$container->singleton('UserRepository', fn() => new MySQLUserRepository());
-$container->singleton('MenuRepository', fn() => new MySQLMenuRepository());
-$container->singleton('MediaRepository', fn() => new MySQLMediaRepository());
-$container->singleton('SessionRepository', fn() => new MySQLSessionRepository());
-$container->singleton('StaticTemplateRepository', fn() => new MySQLStaticTemplateRepository());
-$container->singleton('SettingsRepository', fn() => new MySQLSettingsRepository());
+// Register repositories (lazy loading - only created when needed)
+$container->singleton('BlockRepository', fn($c) => new MySQLBlockRepository());
+$container->singleton('PageRepository', fn($c) => new MySQLPageRepository());
+$container->singleton('UserRepository', fn($c) => new MySQLUserRepository());
+$container->singleton('MenuRepository', fn($c) => new MySQLMenuRepository());
+$container->singleton('MediaRepository', fn($c) => new MySQLMediaRepository());
+$container->singleton('SessionRepository', fn($c) => new MySQLSessionRepository());
+$container->singleton('StaticTemplateRepository', fn($c) => new MySQLStaticTemplateRepository());
+$container->singleton('SettingsRepository', fn($c) => new MySQLSettingsRepository());
 
 // Register use cases
 $container->bind('GetPageWithBlocks', fn($c) => new GetPageWithBlocks(

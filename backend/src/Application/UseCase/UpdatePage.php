@@ -97,6 +97,27 @@ class UpdatePage
             $page->setPageSpecificCode($data['pageSpecificCode']);
         }
 
+        // Handle pre-rendered HTML for published pages (OWASP XSS Prevention 2025)
+        if (isset($data['renderedHtml'])) {
+            // Validation 1: Size limit (max 500KB to prevent DoS)
+            if (strlen($data['renderedHtml']) > 512000) {
+                throw new InvalidArgumentException('rendered_html exceeds maximum size (500KB)');
+            }
+            // PHASE 2: Server-side sanitization (defense in depth)
+            $violations = \Infrastructure\Security\HtmlSanitizer::validate($data['renderedHtml']);
+            if (!empty($violations)) {
+                @file_put_contents(__DIR__ . '/../../../logs/security-alerts.log', 
+                    date('c') . " | HTML VIOLATIONS in renderedHtml | PageID: {$pageId} | Violations: " . implode(', ', $violations) . PHP_EOL,
+                    FILE_APPEND | LOCK_EX
+                );
+
+                // Sanitize (remove dangerous content)
+                $data['renderedHtml'] = \Infrastructure\Security\HtmlSanitizer::sanitize($data['renderedHtml']);
+            }
+
+            $page->setRenderedHtml($data['renderedHtml']);
+        }
+
         // Update timestamp
         $page->touch();
 

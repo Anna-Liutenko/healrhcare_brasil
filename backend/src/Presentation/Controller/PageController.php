@@ -19,7 +19,10 @@ use Application\DTO\GetPageWithBlocksRequest;
 use Domain\Exception\PageNotFoundException;
 use Domain\Exception\BlockNotFoundException;
 use Infrastructure\Middleware\ApiLogger;
+use Presentation\Transformer\EntityToArrayTransformer;
 use Domain\Entity\Block;
+use Infrastructure\Auth\AuthHelper;
+use Infrastructure\Auth\UnauthorizedException;
 
 /**
  * Page Controller
@@ -28,6 +31,8 @@ use Domain\Entity\Block;
  */
 class PageController
 {
+    use JsonResponseTrait;
+
     public function __construct(
             private UpdatePageInline $updatePageInline,
             private UpdatePage $updatePage,
@@ -50,8 +55,12 @@ class PageController
             $request = new GetPageWithBlocksRequest(pageId: $id);
             $response = $this->getPageWithBlocks->execute($request);
 
-            ApiLogger::logResponse(200, $response, $startTime);
-            $this->jsonResponse(['success' => true, 'data' => ['page' => $response->page, 'blocks' => $response->blocks]], 200);
+            // ✅ Use Case уже вернул массивы, не нужен transformer
+            $pageArray = $response->page;
+            $pageArray['blocks'] = $response->blocks;
+            
+            ApiLogger::logResponse(200, $pageArray, $startTime);
+            $this->jsonResponse(['page' => $pageArray], 200);
         } catch (PageNotFoundException $e) {
             $error = ['error' => $e->getMessage(), 'context' => $e->getContext()];
             ApiLogger::logError('PageController::get() error', $e, ['pageId' => $id]);
@@ -73,6 +82,9 @@ class PageController
         $startTime = ApiLogger::logRequest();
 
         try {
+            // Require authentication
+            $user = AuthHelper::requireAuth();
+
             $rawBody = ApiLogger::getRawRequestBody();
             $data = $rawBody === '' ? [] : json_decode($rawBody, true);
 
@@ -88,11 +100,15 @@ class PageController
 
             $result = [
                 'success' => true,
-                'page_id' => $response->pageId
+                'pageId' => $response->pageId
             ];
             ApiLogger::logResponse(201, $result, $startTime);
             $this->jsonResponse($result, 201);
 
+        } catch (UnauthorizedException $e) {
+            $error = ['error' => $e->getMessage()];
+            ApiLogger::logResponse(401, $error, $startTime);
+            $this->jsonResponse($error, 401);
         } catch (\InvalidArgumentException $e) {
             $error = ['error' => $e->getMessage()];
             ApiLogger::logResponse(400, $error, $startTime);
@@ -177,17 +193,10 @@ class PageController
         try {
             $pages = $this->getAllPages->execute();
 
-            $result = array_map(function($page) {
-                return [
-                    'id' => $page->getId(),
-                    'title' => $page->getTitle(),
-                    'slug' => $page->getSlug(),
-                    'status' => $page->getStatus()->getValue(),
-                    'type' => $page->getType()->value,
-                    'createdAt' => $page->getCreatedAt()->format('Y-m-d H:i:s'),
-                    'updatedAt' => $page->getUpdatedAt()->format('Y-m-d H:i:s'),
-                ];
-            }, $pages);
+            $result = array_map(
+                [EntityToArrayTransformer::class, 'pageToArray'],
+                $pages
+            );
 
             ApiLogger::logResponse(200, $result, $startTime);
             $this->jsonResponse($result, 200);
@@ -270,15 +279,5 @@ class PageController
             ApiLogger::logResponse(500, $error, $startTime);
             $this->jsonResponse($error, 500);
         }
-    }
-
-    // ===== HELPERS =====
-
-    private function jsonResponse(array $data, int $statusCode = 200): void
-    {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit;
     }
 }

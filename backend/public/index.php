@@ -56,17 +56,29 @@ $uri = str_replace('/healthcare-cms-backend', '', $uri);
 $uri = str_replace('/healthcare-backend', '', $uri);
 $uri = str_replace('/backend', '', $uri);
 
+// DEBUG: log cleaned URI
+$debugLine2 = date('c') . " | CLEANED_URI=" . ($uri ?? 'NULL') . " | METHOD=" . $method . PHP_EOL;
+@file_put_contents(__DIR__ . '/../logs/request-debug.log', $debugLine2, FILE_APPEND | LOCK_EX);
+
 // Temporary debug: log raw request bodies for page create/update to help trace missing blocks
-if (preg_match('#^/api/pages#', $uri) && in_array($method, ['POST', 'PUT'])) {
-    $raw = file_get_contents('php://input');
-    $debugFile = __DIR__ . '/../logs/request-bodies.log';
-    $entry = json_encode([
-        'timestamp' => date('c'),
-        'method' => $method,
-        'uri' => $uri,
-        'raw' => $raw
-    ]) . PHP_EOL;
-    @file_put_contents($debugFile, $entry, FILE_APPEND | LOCK_EX);
+// DISABLED: file_get_contents('php://input') can only be read once, this interferes with ApiLogger
+// if (preg_match('#^/api/pages#', $uri) && in_array($method, ['POST', 'PUT'])) {
+//     $raw = file_get_contents('php://input');
+//     $debugFile = __DIR__ . '/../logs/request-bodies.log';
+//     $entry = json_encode([
+//         'timestamp' => date('c'),
+//         'method' => $method,
+//         'uri' => $uri,
+//         'raw' => $raw
+//     ]) . PHP_EOL;
+//     @file_put_contents($debugFile, $entry, FILE_APPEND | LOCK_EX);
+// }
+
+// CSP Violation Reporting Endpoint (PHASE 2)
+if ($method === 'POST' && $uri === '/api/csp-report') {
+    $controller = new \Presentation\Controller\CspReportController();
+    $controller->report();
+    exit;
 }
 
 // Простой роутер
@@ -112,6 +124,15 @@ try {
     elseif (preg_match('#^/api/pages/([a-z0-9-]+)$#i', $uri, $matches) && $method === 'DELETE') {
         $controller = $container->make(\Presentation\Controller\PageController::class);
         $controller->delete($matches[1]);
+    }
+    // Collection endpoints (auto-assembled pages)
+    elseif (preg_match('#^/api/pages/([a-f0-9-]{36})/collection-items$#', $uri, $matches) && $method === 'GET') {
+        $controller = new \Presentation\Controller\CollectionController();
+        $controller->getItems($matches[1]);
+    }
+    elseif (preg_match('#^/api/pages/([a-f0-9-]{36})/card-image$#', $uri, $matches) && $method === 'PATCH') {
+        $controller = new \Presentation\Controller\CollectionController();
+        $controller->updateCardImage($matches[1]);
     }
     // Menu (Public)
     elseif (preg_match('#^/api/menu/public$#', $uri) && $method === 'GET') {

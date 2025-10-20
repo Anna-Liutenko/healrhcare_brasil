@@ -11,7 +11,7 @@ $backendTarget = "C:\xampp\htdocs\healthcare-cms-backend"
 $frontendTarget = "C:\xampp\htdocs\visual-editor-standalone"
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "СИНХРОНИЗАЦИЯ ПРОЕКТА В XAMPP" -ForegroundColor Cyan
+Write-Host "PROJECT SYNC TO XAMPP" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -24,16 +24,16 @@ function Sync-Files {
     )
 
     Write-Host "📁 $Description" -ForegroundColor Yellow
-    Write-Host "   Из: $Source" -ForegroundColor Gray
-    Write-Host "   В:  $Destination" -ForegroundColor Gray
+    Write-Host "   From: $Source" -ForegroundColor Gray
+    Write-Host "   To:  $Destination" -ForegroundColor Gray
 
     if (-not (Test-Path $Source)) {
-        Write-Host "   ❌ ОШИБКА: Исходная папка не найдена!" -ForegroundColor Red
+        Write-Host "   ❌ ERROR: Source folder not found!" -ForegroundColor Red
         return $false
     }
 
     if (-not (Test-Path $Destination)) {
-        Write-Host "   ⚠️  Целевая папка не существует, создаю..." -ForegroundColor Yellow
+        Write-Host "   ⚠️  Target folder does not exist, creating..." -ForegroundColor Yellow
         New-Item -Path $Destination -ItemType Directory -Force | Out-Null
     }
 
@@ -49,41 +49,41 @@ function Sync-Files {
             return $false
         }
     } catch {
-        Write-Host "   ❌ ИСКЛЮЧЕНИЕ: $_" -ForegroundColor Red
+        Write-Host "   ❌ EXCEPTION: $_" -ForegroundColor Red
         return $false
     }
 }
 
-# Синхронизация backend
+# Sync backend
 Write-Host ""
 $backendOk = Sync-Files -Source $backendSource -Destination $backendTarget -Description "BACKEND (PHP)"
 
-# Синхронизация frontend
+# Sync frontend
 Write-Host ""
 $frontendOk = Sync-Files -Source $frontendSource -Destination $frontendTarget -Description "FRONTEND (JS/HTML/CSS)"
 
-# Итоги
+# Results
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "РЕЗУЛЬТАТ" -ForegroundColor Cyan
+Write-Host "RESULT" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 if ($backendOk -and $frontendOk) {
-    Write-Host "✅ Все файлы синхронизированы успешно!" -ForegroundColor Green
+    Write-Host "✅ All files synchronized successfully!" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Теперь можно:" -ForegroundColor Yellow
-    Write-Host "  • Открыть http://localhost/visual-editor-standalone/" -ForegroundColor Gray
-    Write-Host "  • Обновить страницу в браузере (Ctrl+Shift+R)" -ForegroundColor Gray
+    Write-Host "Now you can:" -ForegroundColor Yellow
+    Write-Host "  • Open http://localhost/visual-editor-standalone/" -ForegroundColor Gray
+    Write-Host "  • Refresh page in browser (Ctrl+Shift+R)" -ForegroundColor Gray
 } else {
-    Write-Host "⚠️  Синхронизация завершена с ошибками" -ForegroundColor Yellow
+    Write-Host "⚠️  Synchronization completed with errors" -ForegroundColor Yellow
     if (-not $backendOk) {
-        Write-Host "  ❌ Backend не синхронизирован" -ForegroundColor Red
+        Write-Host "  ❌ Backend not synchronized" -ForegroundColor Red
     }
     if (-not $frontendOk) {
-        Write-Host "  ❌ Frontend не синхронизирован" -ForegroundColor Red
+        Write-Host "  ❌ Frontend not synchronized" -ForegroundColor Red
     }
 }
 
 Write-Host ""
-Write-Host "Нажмите любую клавишу для выхода..."
+Write-Host "Press any key to exit..."
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")

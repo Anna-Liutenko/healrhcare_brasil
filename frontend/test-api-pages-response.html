@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>API Pages Response Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+        h1 { color: #008d8d; }
+        .section { background: white; padding: 15px; margin: 10px 0; border-radius: 5px; }
+        pre { background: #282c34; color: #abb2bf; padding: 15px; overflow-x: auto; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .keys { color: #e06c75; }
+    </style>
+</head>
+<body>
+    <h1>API /api/pages Response Test</h1>
+    
+    <div class="section">
+        <h2>Request Info</h2>
+        <p><strong>URL:</strong> <code id="apiUrl"></code></p>
+        <p><strong>Status:</strong> <span id="status"></span></p>
+        <p><strong>Response Time:</strong> <span id="responseTime"></span></p>
+    </div>
+
+    <div class="section">
+        <h2>Raw Response</h2>
+        <pre id="rawResponse">Loading...</pre>
+    </div>
+
+    <div class="section">
+        <h2>First Page Object Analysis</h2>
+        <div id="firstPageAnalysis"></div>
+    </div>
+
+    <div class="section">
+        <h2>Key Format Check</h2>
+        <div id="keyFormatCheck"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost/healthcare-cms-backend/public/api/pages';
+        
+        document.getElementById('apiUrl').textContent = API_URL;
+        
+        async function testAPI() {
+            const startTime = performance.now();
+            
+            try {
+                const token = localStorage.getItem('cms_auth_token');
+                
+                const response = await fetch(API_URL, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                const endTime = performance.now();
+                const responseTime = (endTime - startTime).toFixed(2);
+                
+                document.getElementById('responseTime').textContent = `${responseTime}ms`;
+                document.getElementById('status').innerHTML = response.ok 
+                    ? `<span class="success">${response.status} ${response.statusText}</span>`
+                    : `<span class="error">${response.status} ${response.statusText}</span>`;
+                
+                const data = await response.json();
+                
+                // Display raw response
+                document.getElementById('rawResponse').textContent = JSON.stringify(data, null, 2);
+                
+                // Analyze first page
+                const pages = Array.isArray(data) ? data : (data.data || data.pages || []);
+                
+                if (pages.length > 0) {
+                    const firstPage = pages[0];
+                    const analysis = `
+<strong>First Page Object:</strong>
+<pre>${JSON.stringify(firstPage, null, 2)}</pre>
+
+<strong>Available Keys:</strong>
+<ul>
+${Object.keys(firstPage).map(key => `<li><code>${key}</code>: ${typeof firstPage[key]}</li>`).join('')}
+</ul>
+
+<strong>Expected camelCase Keys:</strong>
+<ul>
+    <li>✓ id: ${firstPage.id ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+    <li>✓ title: ${firstPage.title ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+    <li>✓ slug: ${firstPage.slug ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+    <li>✓ type: ${firstPage.type ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+    <li>✓ status: ${firstPage.status ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+    <li>✓ createdAt: ${firstPage.createdAt ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+    <li>✓ updatedAt: ${firstPage.updatedAt ? '<span class="success">EXISTS</span>' : '<span class="error">MISSING</span>'}</li>
+</ul>
+
+<strong>Unexpected snake_case Keys:</strong>
+<ul>
+    <li>✗ created_at: ${firstPage.created_at ? '<span class="error">FOUND (should not exist!)</span>' : '<span class="success">NOT FOUND</span>'}</li>
+    <li>✗ updated_at: ${firstPage.updated_at ? '<span class="error">FOUND (should not exist!)</span>' : '<span class="success">NOT FOUND</span>'}</li>
+    <li>✗ page_id: ${firstPage.page_id ? '<span class="error">FOUND (should not exist!)</span>' : '<span class="success">NOT FOUND</span>'}</li>
+</ul>
+                    `;
+                    
+                    document.getElementById('firstPageAnalysis').innerHTML = analysis;
+                    
+                    // Check key format
+                    const allKeys = Object.keys(firstPage);
+                    const camelCaseKeys = allKeys.filter(key => /^[a-z][a-zA-Z0-9]*$/.test(key));
+                    const snake_caseKeys = allKeys.filter(key => /_/.test(key));
+                    
+                    const keyCheck = `
+<p><strong>Total keys:</strong> ${allKeys.length}</p>
+<p><strong>camelCase keys:</strong> ${camelCaseKeys.length} ${camelCaseKeys.length === allKeys.length ? '<span class="success">✓ ALL KEYS ARE CAMELCASE</span>' : ''}</p>
+<p><strong>snake_case keys:</strong> ${snake_caseKeys.length} ${snake_caseKeys.length > 0 ? '<span class="error">✗ FOUND SNAKE_CASE KEYS!</span>' : '<span class="success">✓ NONE</span>'}</p>
+
+${snake_caseKeys.length > 0 ? `
+<p class="error"><strong>Found snake_case keys:</strong></p>
+<ul>
+${snake_caseKeys.map(key => `<li><code>${key}</code></li>`).join('')}
+</ul>
+` : ''}
+                    `;
+                    
+                    document.getElementById('keyFormatCheck').innerHTML = keyCheck;
+                    
+                } else {
+                    document.getElementById('firstPageAnalysis').innerHTML = '<p class="error">No pages found in response</p>';
+                }
+                
+            } catch (error) {
+                document.getElementById('rawResponse').textContent = `ERROR: ${error.message}\n\n${error.stack}`;
+                document.getElementById('status').innerHTML = `<span class="error">Failed to fetch</span>`;
+            }
+        }
+        
+        // Run test on page load
+        testAPI();
+    </script>
+</body>
+</html>

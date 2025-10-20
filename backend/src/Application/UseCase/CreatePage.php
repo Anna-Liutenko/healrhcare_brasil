@@ -70,7 +70,9 @@ class CreatePage
             trashedAt: null,
             createdBy: $data['created_by'] ?? $data['createdBy'],
             collectionConfig: $data['collectionConfig'] ?? null,
-            pageSpecificCode: $data['pageSpecificCode'] ?? null
+            pageSpecificCode: $data['pageSpecificCode'] ?? null,
+            renderedHtml: $data['rendered_html'] ?? $data['renderedHtml'] ?? null,
+            sourceTemplateSlug: $data['source_template_slug'] ?? $data['sourceTemplateSlug'] ?? null
         );
 
     // Save page metadata

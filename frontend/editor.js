@@ -93,6 +93,9 @@ const app = createApp({
                 }
             },
 
+            // Collection editor data
+            collectionItems: null,
+
             // Debug Panel
             debugPanelEnabled: typeof window !== 'undefined' ? window.__ENABLE_DEBUG_PANEL !== false : true,
             debugPanelCollapsed: false,
@@ -110,6 +113,11 @@ const app = createApp({
         // Store auth promise to wait in mounted()
         this._authPromise = this.checkAuth();
         await this._authPromise;
+    },
+
+    // Initialize Trusted Types policy for editor (if supported)
+    beforeMount() {
+        this.initTrustedTypesPolicy?.();
     },
 
     async mounted() {
@@ -130,6 +138,15 @@ const app = createApp({
                 // Если пользователь НЕ авторизован, ждём логина
                 // loadPageFromAPI будет вызван ВНУТРИ login() после успешного входа
                 this.debugMsg('Пользователь не авторизован, ожидание входа. Страница будет загружена после логина.', 'info', { pageId });
+            }
+        }
+
+        // If the loaded page is a collection, load its items (if pageData already loaded)
+        if (this.pageData && this.pageData.type === 'collection') {
+            try {
+                await this.loadCollectionItems();
+            } catch (err) {
+                this.debugMsg('Failed to load collection items on mount', 'warning', err);
             }
         }
 
@@ -220,6 +237,12 @@ const app = createApp({
     },
 
     methods: {
+        // ===== UTILITIES =====
+
+        generateBlockId() {
+            return `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        },
+
         // ===== DEBUG PANEL =====
 
         debugMsg(message, type = 'info', payload = null) {
@@ -299,6 +322,7 @@ const app = createApp({
 
         addBlock(blockDef) {
             const newBlock = {
+                id: this.generateBlockId(),
                 type: blockDef.type,
                 customName: '', // Пустое = использовать название по умолчанию
                 data: JSON.parse(JSON.stringify(blockDef.defaultData))
@@ -338,6 +362,7 @@ const app = createApp({
 
         duplicateBlock(index) {
             const blockCopy = JSON.parse(JSON.stringify(this.blocks[index]));
+            blockCopy.id = this.generateBlockId();
             this.blocks.splice(index + 1, 0, blockCopy);
             this.showNotification('Блок продублирован', 'success');
             this.debugMsg('Блок продублирован', 'success', { index });
@@ -512,6 +537,9 @@ const app = createApp({
                     if (!block.hasOwnProperty('customName')) {
                         block.customName = '';
                     }
+                    if (!block.id) {
+                        block.id = this.generateBlockId();
+                    }
                 });
 
                 this.showTemplatesModal = false;
@@ -531,6 +559,7 @@ const app = createApp({
             if (!this.previewBlock) return '';
 
             const tempBlock = {
+                id: this.generateBlockId(),
                 type: this.previewBlock.type,
                 data: JSON.parse(JSON.stringify(this.previewBlock.defaultData))
             };
@@ -572,11 +601,15 @@ const app = createApp({
                     // Получаем HTML из Quill
                     this.articleHtml = this.quillInstance.root.innerHTML;
 
+                    this.debugMsg('Сохранение статьи', 'info', { htmlLength: this.articleHtml.length });
+
                     // Конвертируем HTML в наши блоки
                     this.convertHtmlToBlocks(this.articleHtml);
 
-                    // Сохраняем в localStorage
-                    this.saveToLocalStorage();
+                    // ✅ Блок уже добавлен в this.blocks через convertHtmlToBlocks()
+                    // Пользователь должен нажать "💾 Сохранить" для сохранения через API
+                    
+                    this.showNotification('Статья добавлена в блоки. Не забудьте сохранить страницу!', 'success');
 
                     // Закрываем редактор
                     this.quillInstance = null;
@@ -585,10 +618,11 @@ const app = createApp({
                     // Меняем URL обратно
                     window.history.pushState({}, '', window.location.pathname);
 
-                    this.showNotification('✅ Статья сохранена!', 'success');
+                    this.debugMsg('Статья успешно конвертирована в блок', 'success');
                 } catch (e) {
                     console.error('Saving error:', e);
-                    this.showNotification('Ошибка сохранения', 'error');
+                    this.debugMsg('Ошибка сохранения статьи', 'error', { error: e.message });
+                    this.showNotification('Ошибка сохранения: ' + e.message, 'error');
                 }
             }
         },
@@ -797,9 +831,13 @@ const app = createApp({
             if (existingTextBlockIndex !== -1) {
                 // Обновляем существующий блок
                 this.blocks[existingTextBlockIndex].data.content = html;
+                if (!this.blocks[existingTextBlockIndex].id) {
+                    this.blocks[existingTextBlockIndex].id = this.generateBlockId();
+                }
             } else {
                 // Добавляем новый блок в конец (не заменяем все блоки)
                 this.blocks.push({
+                    id: this.generateBlockId(),
                     type: 'text-block',
                     data: {
                         title: '',
@@ -829,6 +867,18 @@ const app = createApp({
             div.textContent = text;
             return div.innerHTML;
         },
+
+            escapeAttr(str) {
+                if (str === null || str === undefined) return '';
+                return String(str)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;')
+                    .replace(/\n/g, '')
+                    .replace(/\r/g, '');
+            },
 
         nl2br(text) {
             if (!text) return '';
@@ -949,8 +999,10 @@ const app = createApp({
 
         renderBlock(block) {
             if (!block.id) {
-                console.warn('Block ID is missing. Skipping rendering for block:', block);
-                return '<div>Invalid block</div>';
+                // Автоматически назначаем временный ID, чтобы не ломать предпросмотр
+                const tmpId = this.generateBlockId ? this.generateBlockId() : `tmp_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+                block.id = tmpId;
+                this.debugMsg('У блока отсутствовал id — назначен временный для рендера', 'warning', { type: block.type, id: tmpId });
             }
 
             const methods = {
@@ -980,6 +1032,7 @@ const app = createApp({
             const buttonText = data.buttonText || 'Узнать больше';
             const buttonLink = data.buttonLink || '#';
 
+            // Allow HTML in title (for <br> tags) - matching PHP backend behavior
             return `
                 <section class="hero" style="background-image: linear-gradient(rgba(3, 42, 73, 0.6), rgba(3, 42, 73, 0.6)), url('${this.escape(bgImage)}');">
                     <div class="container">
@@ -1015,7 +1068,7 @@ const app = createApp({
 
             const cardsHtml = cards.map((card, idx) => `
                 <div class="service-card">
-                    <div class="icon">${card.icon || ''}</div>
+                    <div class="icon">${this.escape(card.icon || '')}</div>
                     <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${this.escape(card.title || '')}</h3>
                     <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${this.escape(card.text || '')}</p>
                 </div>
@@ -1104,12 +1157,17 @@ const app = createApp({
             const containerClass = containerStyle === 'article' ? 'article-container' : 'container';
             const alignClass = alignment === 'center' ? 'text-center' : alignment === 'right' ? 'text-right' : 'text-left';
 
+            // Для статей (containerStyle='article') контент уже sanitized HTML из Quill
+            // Для обычных text-block'ов title может быть plain text
+            const safeContent = containerStyle === 'article' ? content : this.escape(content);
+            const safeTitle = title ? this.escape(title) : '';
+
             return `
                 <section class="article-block">
                     <div class="${containerClass}">
                         <div class="article-content ${alignClass}">
-                            ${title ? `<h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.escape(title)}</h2>` : ''}
-                            <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.content" data-block-type="${block.type}">${content}</p>
+                            ${safeTitle ? `<h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${safeTitle}</h2>` : ''}
+                            <div data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.content" data-block-type="${block.type}">${safeContent}</div>
                         </div>
                     </div>
                 </section>
@@ -1143,7 +1201,7 @@ const app = createApp({
                 <section class="article-block">
                     <div class="container">
                         <figure style="max-width: 900px; margin: 0 auto;">
-                            <img src="${this.escape(url)}" alt="${this.escape(alt)}" class="${imageClass}" style="${imageStyle}">
+                            <img src="${this.escape(url)}" alt="${this.escape(alt)}" class="${this.escapeAttr(imageClass)}" style="${this.escapeAttr(imageStyle)}">
                             ${caption ? `<figcaption data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.caption" data-block-type="${block.type}" style="text-align: center; color: var(--text-secondary); margin-top: 1rem; font-size: 0.95rem;">${this.escape(caption)}</figcaption>` : ''}
                         </figure>
                     </div>
@@ -1354,10 +1412,10 @@ const app = createApp({
                     seoKeywords: pagePayload.seoKeywords || ''
                 };
 
-                // Load menu settings (backend uses snake_case)
-                this.pageSettings.showInMenu = Boolean(pagePayload.show_in_menu);
-                this.pageSettings.menuPosition = pagePayload.menu_position !== undefined && pagePayload.menu_position !== null ? pagePayload.menu_position : null;
-                this.pageSettings.menuTitle = pagePayload.menu_title || '';
+                // Load menu settings (backend now returns camelCase after refactoring)
+                this.pageSettings.showInMenu = Boolean(pagePayload.showInMenu);
+                this.pageSettings.menuPosition = pagePayload.menuOrder !== undefined && pagePayload.menuOrder !== null ? pagePayload.menuOrder : null;
+                this.pageSettings.menuTitle = pagePayload.menuTitle || '';
 
                 this.blocks = blocksPayload.map((block, index) => {
                     const mapped = blockFromAPI({ ...block, position: index });
@@ -1365,6 +1423,10 @@ const app = createApp({
                         mapped.customName = '';
                     }
                     mapped.position = index;
+                    if (!mapped.id) {
+                        mapped.id = this.generateBlockId();
+                        this.debugMsg('Блоку присвоен временный ID (отсутствовал в API)', 'warning', { index, type: mapped.type });
+                    }
                     return mapped;
                 });
 
@@ -1378,6 +1440,61 @@ const app = createApp({
                 console.error('Error loading page:', error);
                 this.showNotification('Ошибка загрузки: ' + error.message, 'error');
                 this.debugMsg('Ошибка загрузки страницы', 'error', { pageId, message: error.message, details: error.details || null });
+            }
+        },
+
+        // ===== Collection support =====
+        // Загрузить элементы коллекции для текущей страницы-коллекции
+        async loadCollectionItems() {
+            if (!this.currentPageId) return;
+            try {
+                this.debugMsg('Loading collection items', 'info', { pageId: this.currentPageId });
+                const res = await this.apiClient.get(`/api/pages/${this.currentPageId}/collection-items`);
+                const json = await res.json();
+                if (json.success) {
+                    this.collectionItems = json.data;
+                    this.debugMsg('Collection items loaded', 'success', { count: this.collectionItems.sections.reduce((acc, s) => acc + (s.items?.length||0), 0) });
+                } else {
+                    this.debugMsg('Failed to load collection items', 'warning', json.error || json);
+                }
+            } catch (err) {
+                this.debugMsg('Error loading collection items', 'error', err);
+            }
+        },
+
+        // Обновить картинку карточки через API
+        async updateCardImage(targetPageId, imageUrl) {
+            if (!this.currentUser) {
+                this.showNotification('Нужна авторизация для изменения картинки', 'error');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/pages/${this.currentPageId}/card-image`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${this.apiClient.token || ''}`
+                    },
+                    body: JSON.stringify({ targetPageId, imageUrl })
+                });
+                const json = await res.json();
+                if (json.success) {
+                    this.showNotification('Картинка обновлена', 'success');
+                    await this.loadCollectionItems();
+                } else {
+                    this.showNotification('Ошибка: ' + (json.error || 'Unknown'), 'error');
+                }
+            } catch (err) {
+                this.debugMsg('Failed to update card image', 'error', err);
+                this.showNotification('Ошибка обновления картинки', 'error');
+            }
+        },
+
+        // Открыть prompt для изменения картинки (простая галерея/URL)
+        async changeCardImage(targetPageId) {
+            const newImageUrl = prompt('Введите URL новой картинки:');
+            if (newImageUrl) {
+                await this.updateCardImage(targetPageId, newImageUrl);
             }
         },
 
@@ -1427,6 +1544,27 @@ const app = createApp({
                 return;
             }
 
+            // PHASE 2: Generate rendered HTML and sanitize before sending
+            const renderedHtmlRaw = this.exportRenderedHtml ? this.exportRenderedHtml() : null;
+
+            let renderedHtmlForApi = null;
+            if (renderedHtmlRaw) {
+                // If DOMPurify is available, sanitize client-side
+                try {
+                    renderedHtmlForApi = this.sanitizeHTML(renderedHtmlRaw);
+                    if (renderedHtmlRaw !== renderedHtmlForApi) {
+                        console.warn('[SECURITY] HTML was sanitized by DOMPurify:', {
+                            original_length: renderedHtmlRaw.length,
+                            sanitized_length: renderedHtmlForApi.length,
+                            diff: renderedHtmlRaw.length - renderedHtmlForApi.length
+                        });
+                    }
+                } catch (e) {
+                    console.error('[SECURITY] DOMPurify not available, sending raw HTML', e);
+                    renderedHtmlForApi = renderedHtmlRaw;
+                }
+            }
+
             const basePageData = toPlainObject({
                 title: this.pageData.title,
                 slug: this.pageData.slug,
@@ -1449,10 +1587,12 @@ const app = createApp({
             const pageDataForAPI = {
                 ...basePageData,
                 blocks: blocksPayload,
-                // Menu fields (snake_case expected by backend)
-                show_in_menu: (this.pageSettings.showInMenu && (this.pageData.status === 'published')) ? 1 : 0,
-                menu_position: this.pageSettings.menuPosition === null ? 0 : Number(this.pageSettings.menuPosition || 0),
-                menu_title: this.pageSettings.menuTitle || null
+                // Include sanitized renderedHtml if present (defense in depth)
+                ...(renderedHtmlForApi ? { renderedHtml: renderedHtmlForApi } : {}),
+                // Menu fields (camelCase expected by backend after refactoring)
+                showInMenu: (this.pageSettings.showInMenu && (this.pageData.status === 'published')) ? true : false,
+                menuOrder: this.pageSettings.menuPosition === null ? 0 : Number(this.pageSettings.menuPosition || 0),
+                menuTitle: this.pageSettings.menuTitle || null
             };
 
             this.debugMsg('========== СОХРАНЕНИЕ СТРАНИЦЫ ==========', 'info');
@@ -1473,18 +1613,150 @@ const app = createApp({
                     this.debugMsg('Страница обновлена', 'success', { pageId: this.currentPageId });
                 } else {
                     response = await this.apiClient.createPage(pageDataForAPI);
-                    this.currentPageId = response.page_id || response.pageId || response.id;
+                    this.currentPageId = response.pageId;
                     this.isEditMode = true;
                     this.pageData.status = 'draft'; // ← Добавить статус для кнопки "Опубликовать"
                     window.history.pushState({}, '', `?id=${this.currentPageId}`);
                     this.showNotification('✅ Страница создана', 'success');
                     this.debugMsg('Новая страница создана', 'success', { pageId: this.currentPageId });
                 }
+
+                // После успешного сохранения подгружаем страницу заново —
+                // это синхронизирует временные client-side ID блоков с настоящими ID с сервера
+                try {
+                    this.debugMsg('Рефреш страницы из API после сохранения для синхронизации ID', 'info', { pageId: this.currentPageId });
+                    await this.loadPageFromAPI(this.currentPageId);
+                    this.debugMsg('Синхронизация блоков с серверными ID завершена', 'success', { pageId: this.currentPageId });
+                } catch (e) {
+                    this.debugMsg('Не удалось рефрешнуть страницу после сохранения', 'warning', { message: e.message });
+                }
             } catch (error) {
                 console.error('Save error:', error);
                 this.showNotification('Ошибка сохранения: ' + error.message, 'error');
                 this.debugMsg('Ошибка сохранения страницы', 'error', { message: error.message, details: error.details || null });
             }
+        },
+
+        /**
+         * Sanitize HTML using DOMPurify
+         * Removes dangerous HTML/JS while preserving safe formatting.
+         * @param {string} html - Raw HTML
+         * @return {string} Sanitized HTML
+         */
+        sanitizeHTML(html) {
+            if (typeof DOMPurify === 'undefined') {
+                console.error('[SECURITY] DOMPurify not loaded! HTML will NOT be sanitized!');
+                return html; // Fallback (unsafe)
+            }
+
+            const config = {
+                SAFE_FOR_TEMPLATES: true,
+                KEEP_CONTENT: true,
+                ALLOWED_TAGS: [
+                    'h1','h2','h3','h4','h5','h6',
+                    'p','div','span','a','img',
+                    'ul','ol','li',
+                    'strong','em','br',
+                    'section','article','header','footer',
+                    'blockquote','code','pre'
+                ],
+                ALLOWED_ATTR: [
+                    'href','src','alt','title',
+                    'class','id','style',
+                    'data-block-id','data-field-path','data-block-type',
+                    'data-inline-editable'
+                ],
+                ALLOW_DATA_ATTR: true,
+                FORBID_TAGS: [ 'script','iframe','object','embed','applet','base','meta','link' ],
+                FORBID_ATTR: [ 'onerror','onclick','onload','onmouseover' ]
+            };
+
+            return DOMPurify.sanitize(html, config);
+        },
+
+        /**
+         * Initialize Trusted Types policy (polyfill fallback)
+         */
+        initTrustedTypesPolicy() {
+            try {
+                if (typeof trustedTypes === 'undefined') {
+                    console.warn('[SECURITY] Trusted Types API not supported in this browser. Using polyfill fallback.');
+                    window.trustedTypes = {
+                        createPolicy: (name, rules) => rules
+                    };
+                }
+
+                this.trustedPolicy = trustedTypes.createPolicy('editor-html', {
+                    createHTML: (input) => {
+                        return this.sanitizeHTML(input);
+                    }
+                });
+
+                console.log('[SECURITY] Trusted Types policy "editor-html" created');
+            } catch (e) {
+                console.warn('[SECURITY] Failed to initialize Trusted Types policy', e);
+            }
+        },
+
+        /**
+         * Sanitize HTML using DOMPurify
+         * 
+         * Removes dangerous HTML/JS while preserving safe formatting.
+         * 
+         * @param {string} html - Raw HTML
+         * @return {string} Sanitized HTML
+         * @see https://github.com/cure53/DOMPurify (OWASP recommended)
+         */
+        sanitizeHTML(html) {
+            if (typeof DOMPurify === 'undefined') {
+                console.error('[SECURITY] DOMPurify not loaded! HTML will NOT be sanitized!');
+                return html; // Fallback (unsafe)
+            }
+            
+            // DOMPurify config for safe templates (2025 best practices)
+            const config = {
+                SAFE_FOR_TEMPLATES: true,           // Remove data attributes that could be exploited
+                KEEP_CONTENT: true,                 // Keep text content when removing tags
+                ALLOWED_TAGS: [                     // Whitelist safe tags
+                    'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                    'p', 'div', 'span', 'a', 'img',
+                    'ul', 'ol', 'li',
+                    'strong', 'em', 'br',
+                    'section', 'article', 'header', 'footer',
+                    'blockquote', 'code', 'pre'
+                ],
+                ALLOWED_ATTR: [                     // Whitelist safe attributes
+                    'href', 'src', 'alt', 'title',
+                    'class', 'id', 'style',
+                    'data-block-id', 'data-field-path', 'data-block-type',
+                    'data-inline-editable'
+                ],
+                ALLOW_DATA_ATTR: true,              // Allow data-* attributes (needed for editor)
+                FORBID_TAGS: [                      // Blacklist dangerous tags
+                    'script', 'iframe', 'object', 'embed',
+                    'applet', 'base', 'meta', 'link'
+                ],
+                FORBID_ATTR: [                      // Blacklist dangerous attributes
+                    'onerror', 'onclick', 'onload', 'onmouseover'
+                ]
+            };
+            
+            return DOMPurify.sanitize(html, config);
+        },
+
+        /**
+         * Export rendered HTML from current blocks (for API submission)
+         * 
+         * @return {string} Complete HTML string
+         */
+        exportRenderedHtml() {
+            let html = '';
+
+            for (const block of this.blocks) {
+                html += this.renderBlock(block);
+            }
+
+            return html;
         },
 
         async publishPage() {

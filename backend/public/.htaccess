@@ -1,9 +1,15 @@
+# Enable FollowSymLinks for RewriteRule to work
+Options +FollowSymLinks
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
     # Ensure correct base when served from a subpath on local Apache (XAMPP)
     # Adjust this if your local DocumentRoot uses a different subpath.
     RewriteBase /healthcare-cms-backend/public
+
+    # Allow direct access to uploads directory - skip rewrite
+    RewriteRule ^uploads/ - [L]
 
     # Redirect to index.php
     RewriteCond %{REQUEST_FILENAME} !-f

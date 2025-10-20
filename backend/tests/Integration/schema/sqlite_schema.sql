@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sessions (
   id TEXT PRIMARY KEY,
   user_id TEXT,
-  expires_at TEXT
+  expires_at TEXT,
+  csrf_token TEXT
 );
 
 CREATE TABLE IF NOT EXISTS pages (

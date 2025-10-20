@@ -11,6 +11,7 @@ namespace Domain\ValueObject;
  */
 enum UserRole: string
 {
+    case Viewer = 'viewer';
     case SuperAdmin = 'super_admin';
     case Admin = 'admin';
     case Editor = 'editor';

@@ -24,6 +24,10 @@
     <!-- Turndown.js for HTML -> Markdown conversion (used by inline editor) -->
     <script src="https://cdn.jsdelivr.net/npm/turndown@7.1.2/dist/turndown.min.js"></script>
 
+    <!-- DOMPurify for HTML Sanitization (OWASP Recommended 2025) -->
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"
+        crossorigin="anonymous"></script>
+
     <!-- Inline notifications (non-blocking replacement for alert) -->
     <script src="js/inline-notify.js"></script>
 
@@ -304,6 +308,26 @@
                                 type="text"
                                 placeholder="здравоохранение, бразилия, медицина"
                             >
+                        </div>
+
+                        <!-- Collection Editor -->
+                        <div v-if="pageData.type === 'collection' && collectionItems" class="settings-group" style="margin-top: 1.5rem; background: #fff; padding: 1rem; border-radius: 8px;">
+                            <h4 style="margin-top: 0;">Элементы коллекции</h4>
+                            <div v-for="section in collectionItems.sections" :key="section.title" style="margin-bottom: 1rem;">
+                                <strong>{{ section.title }}</strong>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem;">
+                                    <div v-for="item in section.items" :key="item.id" style="display:flex; align-items: center; gap: 0.5rem; background: rgba(0,0,0,0.03); padding: 0.5rem; border-radius: 6px;">
+                                        <img :src="item.image" :alt="item.title" style="width:64px; height:64px; object-fit:cover; border-radius:4px;">
+                                        <div style="flex:1; min-width: 120px;">
+                                            <div style="font-weight:600;">{{ item.title }}</div>
+                                            <div style="font-size:0.85rem; color:var(--text-secondary);">{{ item.snippet }}</div>
+                                        </div>
+                                        <div style="display:flex; gap:0.5rem;">
+                                            <button @click.prevent="changeCardImage(item.id)" class="toolbar-btn">Изменить картинку</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div v-if="currentPageId" style="margin-top: 2rem; padding: 1rem; background: var(--bg-accent); border-radius: 8px;">
@@ -766,6 +790,7 @@
     </div>
 
     <script src="js/InlineEditorManager.js"></script>
-    <script type="module" src="editor.js?v=1.2"></script>
+    <!-- DOMPurify must be loaded before editor.js so sanitizeHTML() is available -->
+    <script type="module" src="editor.js?v=1.4.20251019"></script>
 </body>
 </html>

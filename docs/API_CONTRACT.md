@@ -9,6 +9,55 @@
 
 ---
 
+## Response Format Standards
+
+### Naming Convention
+
+**ALL JSON responses use camelCase for property names.**
+
+✅ **Correct:**
+```json
+{
+  "pageId": "123",
+  "showInMenu": true,
+  "createdBy": "user123",
+  "createdAt": "2025-01-11 12:00:00"
+}
+```
+
+❌ **Incorrect:**
+```json
+{
+  "page_id": "123",       // ❌ snake_case
+  "show_in_menu": true,   // ❌ snake_case
+  "created_by": "user123" // ❌ snake_case
+}
+```
+
+### Request Format
+
+**ALL JSON requests accept camelCase properties.**
+
+Frontend automatically converts camelCase → snake_case using `mappers.js`.
+
+Backend Use Cases accept camelCase and may support snake_case for backward compatibility, but camelCase is the primary format.
+
+### Transformation Layer
+
+**Backend uses `EntityToArrayTransformer` to convert Domain Entities → JSON arrays.**
+
+Location: `backend/src/Presentation/Transformer/EntityToArrayTransformer.php`
+
+Methods:
+- `pageToArray(Page $page): array` — converts Page entity
+- `blockToArray(Block $block): array` — converts Block entity
+- `userToArray(User $user): array` — converts User entity
+- `mediaFileToArray(MediaFile $file): array` — converts MediaFile entity
+
+All transformers guarantee camelCase output.
+
+---
+
 ## Table of Contents
 
 1. [Authentication](#authentication)
@@ -171,25 +220,26 @@ Authorization: Bearer {token}
     "status": "published",
     "type": "regular",
     "seo": {
-      "meta_title": "Home - Healthcare Brazil",
-      "meta_description": "Healthcare services in Brazil",
-      "meta_keywords": "healthcare, brazil, medical"
+      "metaTitle": "Home - Healthcare Brazil",
+      "metaDescription": "Healthcare services in Brazil",
+      "metaKeywords": "healthcare, brazil, medical"
     },
     "tracking": {
-      "page_specific_code": "<!-- GA4 custom event -->"
+      "pageSpecificCode": "<!-- GA4 custom event -->"
     },
-    "created_at": "2025-01-15T10:00:00Z",
-    "updated_at": "2025-01-20T14:30:00Z",
-    "published_at": "2025-01-20T14:30:00Z",
-    "created_by": "550e8400-e29b-41d4-a716-446655440000"
+    "showInMenu": true,
+    "createdBy": "550e8400-e29b-41d4-a716-446655440000",
+    "createdAt": "2025-01-15T10:00:00Z",
+    "updatedAt": "2025-01-20T14:30:00Z",
+    "publishedAt": "2025-01-20T14:30:00Z"
   },
   "blocks": [
     {
       "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-      "page_id": "75f53538-dd6c-489a-9b20-d0004bb5086b",
+      "pageId": "75f53538-dd6c-489a-9b20-d0004bb5086b",
       "type": "main-screen",
       "position": 0,
-      "custom_name": "Hero Section",
+      "customName": "Hero Section",
       "data": {
         "title": "Healthcare in Brazil",
         "subtitle": "Quality medical services",
@@ -294,7 +344,7 @@ Content-Type: application/json
 ```json
 {
   "success": true,
-  "page_id": "new-uuid-here"
+  "pageId": "550e8400-e29b-41d4-a716-446655440000"
 }
 ```
 

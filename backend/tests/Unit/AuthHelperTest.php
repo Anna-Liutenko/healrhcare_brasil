@@ -49,7 +49,8 @@ class AuthHelperTest extends TestCase
     {
         // create session
         $token = 'tok1';
-        $this->pdo->prepare('INSERT INTO sessions (id, user_id, expires_at) VALUES (:id, :user_id, datetime("now", "+1 day"))')->execute(['id' => $token, 'user_id' => 'u1']);
+    $csrf = bin2hex(random_bytes(8));
+    $this->pdo->prepare('INSERT INTO sessions (id, user_id, expires_at, csrf_token) VALUES (:id, :user_id, datetime("now", "+1 day"), :csrf)')->execute(['id' => $token, 'user_id' => 'u1', 'csrf' => $csrf]);
 
         // set header
         $_SERVER['HTTP_AUTHORIZATION'] = 'Bearer ' . $token;

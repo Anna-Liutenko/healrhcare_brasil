@@ -215,6 +215,15 @@ export function blockToAPI(block) {
     converted.is_editable = Boolean(plainBlock.isEditable);
   }
 
+  // Ensure we don't send temporary/non-numeric IDs for new blocks
+  if ("id" in converted) {
+    const idVal = converted.id;
+    const isNumericId = typeof idVal === "number" || (typeof idVal === "string" && /^\d+$/.test(idVal));
+    if (!isNumericId || (typeof idVal === "string" && idVal.startsWith("tmp_"))) {
+      delete converted.id;
+    }
+  }
+
   // Remove undefined values to avoid sending extraneous fields.
   for (const key of Object.keys(converted)) {
     if (converted[key] === undefined) {

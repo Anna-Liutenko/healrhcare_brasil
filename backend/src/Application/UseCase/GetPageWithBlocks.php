@@ -9,6 +9,7 @@ use Domain\Repository\BlockRepositoryInterface;
 use Application\DTO\GetPageWithBlocksRequest;
 use Application\DTO\GetPageWithBlocksResponse;
 use Domain\Exception\PageNotFoundException;
+use Presentation\Transformer\EntityToArrayTransformer;
 use DomainException;
 
 /**
@@ -39,8 +40,8 @@ class GetPageWithBlocks
         $blocks = $this->blockRepository->findByPageId($request->pageId);
 
         return new GetPageWithBlocksResponse(
-            page: $this->serializePage($page),
-            blocks: array_map(fn($block) => $this->serializeBlock($block), $blocks)
+            page: EntityToArrayTransformer::pageToArray($page),
+            blocks: array_map([EntityToArrayTransformer::class, 'blockToArray'], $blocks)
         );
     }
 
@@ -60,12 +61,13 @@ class GetPageWithBlocks
         $blocks = $this->blockRepository->findByPageId($page->getId());
 
         return new GetPageWithBlocksResponse(
-            page: $this->serializePage($page),
-            blocks: array_map(fn($block) => $this->serializeBlock($block), $blocks)
+            page: EntityToArrayTransformer::pageToArray($page),
+            blocks: array_map([EntityToArrayTransformer::class, 'blockToArray'], $blocks)
         );
     }
 
-    private function serializePage($page): array
+    // УДАЛЕНО: serializePage() - теперь используется EntityToArrayTransformer::pageToArray()
+    private function serializePage_DEPRECATED($page): array
     {
         return [
             'id' => $page->getId(),
@@ -89,7 +91,8 @@ class GetPageWithBlocks
         ];
     }
 
-    private function serializeBlock($block): array
+    // УДАЛЕНО: serializeBlock() - теперь используется EntityToArrayTransformer::blockToArray()
+    private function serializeBlock_DEPRECATED($block): array
     {
         return [
             'id' => $block->getId(),

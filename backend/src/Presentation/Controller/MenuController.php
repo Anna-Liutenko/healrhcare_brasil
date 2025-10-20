@@ -13,6 +13,7 @@ use Domain\Entity\Menu;
 use Domain\Entity\MenuItem;
 use Infrastructure\Middleware\ApiLogger;
 use Infrastructure\Repository\MySQLMenuRepository;
+use Presentation\Transformer\EntityToArrayTransformer;
 use InvalidArgumentException;
 use DomainException;
 
@@ -21,6 +22,8 @@ use DomainException;
  */
 class MenuController
 {
+    use JsonResponseTrait;
+
     /**
      * GET /api/menu/public
      * 
@@ -117,7 +120,7 @@ class MenuController
 
             $response = [
                 'success' => true,
-                'menu_item_id' => $menuItem->getId()
+                'menuItemId' => $menuItem->getId()
             ];
 
             ApiLogger::logResponse(201, $response, $startTime);
@@ -270,20 +273,12 @@ class MenuController
         return $data;
     }
 
-    private function jsonResponse(array $data, int $statusCode = 200): void
-    {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit;
-    }
-
     private function buildMenuResponse(Menu $menu): array
     {
         return [
             'id' => $menu->getId(),
             'name' => $menu->getName(),
-            'display_name' => $menu->getDisplayName(),
+            'displayName' => $menu->getDisplayName(),  // ✅ camelCase
             'items' => $this->buildMenuTree($menu->getItems())
         ];
     }
@@ -299,12 +294,12 @@ class MenuController
             $indexed[$item->getId()] = [
                 'id' => $item->getId(),
                 'label' => $item->getLabel(),
-                'page_id' => $item->getPageId(),
-                'external_url' => $item->getExternalUrl(),
+                'pageId' => $item->getPageId(),          // ✅ camelCase
+                'externalUrl' => $item->getExternalUrl(), // ✅ camelCase
                 'position' => $item->getPosition(),
-                'parent_id' => $item->getParentId(),
-                'open_in_new_tab' => $item->isOpenInNewTab(),
-                'css_class' => $item->getCssClass(),
+                'parentId' => $item->getParentId(),      // ✅ camelCase
+                'openInNewTab' => $item->isOpenInNewTab(), // ✅ camelCase
+                'cssClass' => $item->getCssClass(),      // ✅ camelCase
                 'icon' => $item->getIcon(),
                 'children' => []
             ];
@@ -313,7 +308,7 @@ class MenuController
         $tree = [];
 
         foreach ($indexed as $id => &$node) {
-            $parentId = $node['parent_id'];
+            $parentId = $node['parentId'];
             if ($parentId !== null && isset($indexed[$parentId])) {
                 $indexed[$parentId]['children'][] = &$node;
             } else {

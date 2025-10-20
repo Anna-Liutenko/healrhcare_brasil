@@ -65,7 +65,7 @@ class PublicPageController
             $useCase = new GetPageWithBlocks($pageRepository, $blockRepository);
 
             $result = $useCase->executeBySlug($slug);
-            if (empty($result) || empty($result['page'])) {
+            if (empty($result) || empty($result->page)) {
                 // Try static template
                 if ($this->tryRenderStaticTemplate($slug)) {
                     return;
@@ -75,22 +75,39 @@ class PublicPageController
             }
 
             // If a pre-rendered HTML exists for a published page, serve it directly
-            $page = $result['page'];
-            
-            // Debug logging
+            $page = $result->page;
+
+            // Normalize page to array if the use case returned an object
+            if (is_object($page)) {
+                $page = (array)$page;
+            }
+
+            // Debug logging — use camelCase keys from DTO (renderedHtml)
             @file_put_contents(__DIR__ . '/../../../logs/public-page-debug.log', 
                 date('c') . " | slug=$slug | status=" . ($page['status'] ?? 'null') . 
-                " | has_rendered_html=" . (isset($page['rendered_html']) && !empty($page['rendered_html']) ? 'YES' : 'NO') . 
-                " | rendered_html_length=" . (isset($page['rendered_html']) ? strlen($page['rendered_html']) : 0) . 
+                " | has_renderedHtml=" . (isset($page['renderedHtml']) && !empty($page['renderedHtml']) ? 'YES' : 'NO') . 
+                " | renderedHtml_length=" . (isset($page['renderedHtml']) ? strlen($page['renderedHtml']) : 0) . 
                 PHP_EOL, FILE_APPEND | LOCK_EX);
-            
-            if (isset($page['status']) && $page['status'] === 'published' && isset($page['rendered_html']) && !empty($page['rendered_html'])) {
+
+            if (isset($page['status']) && $page['status'] === 'published' && isset($page['renderedHtml']) && !empty($page['renderedHtml'])) {
                 @file_put_contents(__DIR__ . '/../../../logs/public-page-debug.log', 
                     date('c') . " | SERVING PRE-RENDERED HTML for slug=$slug" . PHP_EOL, FILE_APPEND | LOCK_EX);
+                
+                // For published pages with pre-rendered HTML, use simpler CSP
+                // (inline scripts from rendered_html don't have nonce attributes)
+                header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests; report-uri /api/csp-report;");
+                header('X-Content-Type-Options: nosniff');
+                header('X-Frame-Options: DENY');
+                header('X-XSS-Protection: 1; mode=block');
+                header('Referrer-Policy: strict-origin-when-cross-origin');
+                header('Permissions-Policy: geolocation=(), microphone=(), camera=()');
+
                 header('Content-Type: text/html; charset=utf-8');
                 // Ensure uploads URLs point to the actual public/uploads path so Apache serves them
-                $fixed = $this->fixUploadsUrls($page['rendered_html']);
-                echo $fixed;
+                $fixed = $this->fixUploadsUrls($page['renderedHtml']);
+                // Diagnostic comment so it's easy to see in browser which branch served the page
+                $diag = "<!-- SERVED=pre-rendered | length=" . strlen($fixed) . " | ts=" . time() . " -->\n";
+                echo $diag . $fixed;
                 exit; // Important: stop execution here
             }
 
@@ -130,15 +147,29 @@ class PublicPageController
     /**
      * Рендерит страницу на основе данных
      */
-    private function renderPage(array $pageData): void
+    private function renderPage(\Application\DTO\GetPageWithBlocksResponse $pageData): void
     {
-        $this->e2eLog(date('c') . " | renderPage called | slug=" . ($pageData['page']['slug'] ?? '') . " | title=" . ($pageData['page']['title'] ?? '') . PHP_EOL);
+    $this->e2eLog(date('c') . " | renderPage called | slug=" . ($pageData->page['slug'] ?? '') . " | title=" . ($pageData->page['title'] ?? '') . PHP_EOL);
         
         http_response_code(200);
         header('Content-Type: text/html; charset=utf-8');
         
-        $page = $pageData['page'];
-        $blocks = $pageData['blocks'] ?? [];
+        $page = $pageData->page;
+        $blocks = $pageData->blocks ?? [];
+
+        // Ensure page and blocks are arrays (use cases or transformers may return objects)
+        if (is_object($page)) {
+            $page = (array)$page;
+        }
+        if (is_object($blocks)) {
+            // If blocks is a single object, convert to array; if iterable object, try casting
+            $blocks = is_array($blocks) ? $blocks : (array)$blocks;
+        }
+        // If this page is a collection, use the special collection renderer
+        if (isset($page['type']) && $page['type'] === 'collection') {
+            $this->renderCollectionPage($page);
+            return;
+        }
     // Debug: dump blocks into log to see what's being received at runtime
     $this->e2eLog(date('c') . " | blocksRuntimeDump=" . var_export($blocks, true) . PHP_EOL);
         
@@ -295,7 +326,9 @@ class PublicPageController
         
         // Fix upload URLs in runtime-generated HTML as well (covers /uploads/... references)
         $html = $this->fixUploadsUrls($html);
-        echo $html;
+        // Diagnostic comment so we can see runtime vs pre-rendered output in the browser
+        $diag = "<!-- SERVED=runtime | length=" . strlen($html) . " | ts=" . time() . " -->\n";
+        echo $diag . $html;
         exit;
     }
 
@@ -309,11 +342,24 @@ class PublicPageController
         // Base prefix to reach files under public/uploads from the site root
         $publicPrefix = '/healthcare-cms-backend/public';
 
-        // Replace src and href attribute values that start with /uploads/
+        // PHASE 1: Handle development URLs (http://localhost/healthcare-cms-backend/public/uploads/...)
+        // Convert to production-ready relative URLs: /healthcare-cms-backend/public/uploads/...
+        $html = preg_replace_callback(
+            "/(src=\'|src=\"|href=\'|href=\")http:\/\/localhost\/healthcare-cms-backend\/public(\/uploads\/[^\"']+)/i",
+            function($m) use ($publicPrefix) {
+                return $m[1] . $publicPrefix . $m[2];
+            },
+            $html
+        );
+
+        // PHASE 2: Replace src and href attribute values that start with /uploads/
         $html = preg_replace("/(src=\'|src=\"|href=\'|href=\")\/uploads\//i", "$1" . $publicPrefix . '/uploads/', $html);
 
-        // Replace CSS url(/uploads/...) occurrences
+        // PHASE 3: Replace CSS url(/uploads/...) occurrences
         $html = preg_replace("/url\(\s*['\"]?\/uploads\//i", "url(" . $publicPrefix . '/uploads/', $html);
+
+        // PHASE 4: Handle relative uploads/ paths (no leading slash)
+        $html = preg_replace("/(src=\'|src=\"|href=\'|href=\")uploads\//i", "$1" . $publicPrefix . '/uploads/', $html);
 
         return $html;
     }
@@ -321,10 +367,13 @@ class PublicPageController
     /**
      * Вставляет контент страницы в HTML шаблон
      */
+    // NOTE: this helper historically accepted an array; Public controller now passes DTO.
+    // The method kept accepting array for compatibility with other callers, but when used
+    // from this controller we pass $pageData->page and $pageData->blocks explicitly.
     private function injectPageContent(string $html, array $pageData): string
     {
-        $this->e2eLog(date('c') . " | injectPageContent called | slug=" . ($pageData['page']['slug'] ?? '') . " | title=" . ($pageData['page']['title'] ?? '') . PHP_EOL);
-        $page = $pageData['page'];
+        $this->e2eLog(date('c') . " | injectPageContent called | slug=" . ($pageData['slug'] ?? '') . " | title=" . ($pageData['title'] ?? '') . PHP_EOL);
+        $page = $pageData;
         $blocks = $pageData['blocks'] ?? [];
 
         // Заменяем title
@@ -334,7 +383,7 @@ class PublicPageController
     $this->e2eLog(date('c') . " | titleReplaced=" . (strpos($before, htmlspecialchars($page['title'])) === false && strpos($html, htmlspecialchars($page['title'])) !== false ? '1' : '0') . PHP_EOL);
 
         // Для главной страницы вставляем контент из блоков
-        if ($page['slug'] === 'home') {
+        if (($page['slug'] ?? '') === 'home') {
             $html = $this->injectHomeContent($html, $blocks);
         }
 
@@ -344,7 +393,7 @@ class PublicPageController
             $blocksHtml = "\n<!-- Blocks fallback -->\n<main class=\"blocks-fallback\">\n";
             foreach ($blocks as $block) {
                 $type = $block['type'] ?? '';
-                $raw = $block['data'] ?? null;
+                $raw = $block['data'] ?? $block['data'] ?? null;
                 if (is_string($raw)) {
                     $data = json_decode($raw, true) ?: [];
                 } elseif (is_array($raw)) {
@@ -352,11 +401,11 @@ class PublicPageController
                 } else {
                     $data = [];
                 }
-                if ($type === 'hero' && isset($data['heading'])) {
-                    $blocksHtml .= '<h2>' . $this->renderText($data['heading']) . '</h2>\n';
-                }
-                if ($type === 'text' && isset($data['text'])) {
-                    $blocksHtml .= '<div>' . $this->renderText($data['text']) . '</div>\n';
+                    if ($type === 'hero' && isset($data['heading'])) {
+                        $blocksHtml .= '<h2>' . $this->renderText($data['heading']) . '</h2>\n';
+                    }
+                    if ($type === 'text' && isset($data['text'])) {
+                        $blocksHtml .= '<div>' . $this->renderText($data['text']) . '</div>\n';
                 }
             }
             $blocksHtml .= "</main>\n";
@@ -495,6 +544,110 @@ class PublicPageController
 
         $logPath = __DIR__ . '/../../../logs/e2e-publicpage.log';
         @file_put_contents($logPath, $message, FILE_APPEND | LOCK_EX);
+    }
+
+    /**
+     * Inject nonce attribute into all <script> and <style> tags
+     *
+     * Required for nonce-based CSP compliance.
+     *
+     * @param string $html Original HTML
+     * @param string $nonce Generated nonce
+     * @return string HTML with nonce attributes
+     */
+    private function injectNonceIntoHTML(string $html, string $nonce): string
+    {
+        $nonceAttr = htmlspecialchars($nonce, ENT_QUOTES, 'UTF-8');
+        
+        // Pattern 1: Add nonce to <script> tags
+        // Handles: <script>, <script >, <script type="text/javascript">
+        $html = preg_replace_callback(
+            '/<script\b([^>]*)>/i',
+            function($m) use ($nonceAttr) {
+                $attrs = $m[1];
+                // If nonce already present, don't add it again
+                if (stripos($attrs, 'nonce=') !== false) {
+                    return $m[0];
+                }
+                // Add nonce before closing >
+                return '<script nonce="' . $nonceAttr . '"' . $attrs . '>';
+            },
+            $html
+        );
+
+        // Pattern 2: Add nonce to <style> tags
+        $html = preg_replace_callback(
+            '/<style\b([^>]*)>/i',
+            function($m) use ($nonceAttr) {
+                $attrs = $m[1];
+                // If nonce already present, don't add it again
+                if (stripos($attrs, 'nonce=') !== false) {
+                    return $m[0];
+                }
+                // Add nonce before closing >
+                return '<style nonce="' . $nonceAttr . '"' . $attrs . '>';
+            },
+            $html
+        );
+
+        return $html;
+    }
+
+    /**
+     * Рендеринг страницы-коллекции
+     */
+    private function renderCollectionPage(array $page): void
+    {
+        try {
+            $pageRepo = new \Infrastructure\Repository\MySQLPageRepository();
+            $blockRepo = new \Infrastructure\Repository\MySQLBlockRepository();
+            
+            $useCase = new \Application\UseCase\GetCollectionItems($pageRepo, $blockRepo);
+            $collectionData = $useCase->execute($page['id']);
+
+            http_response_code(200);
+            header('Content-Type: text/html; charset=utf-8');
+
+            $html = '<!DOCTYPE html>\n<html lang="ru">\n<head>\n    <meta charset="UTF-8">\n    <title>' . htmlspecialchars($page['seo_title'] ?? $page['title'], ENT_QUOTES, 'UTF-8') . '</title>\n    <meta name="description" content="' . htmlspecialchars($page['seo_description'] ?? '', ENT_QUOTES, 'UTF-8') . '">\n    <link rel="stylesheet" href="/healthcare-cms-frontend/styles.css">\n</head>\n<body>\n    <header class="main-header">\n        <nav>\n            <a href="/">Главная</a>\n            <a href="/all-materials">Все материалы</a>\n        </nav>\n    </header>\n    \n    <main>\n        <div class="container">\n            <h1 style="font-family: var(--font-heading); font-size: 2.5rem; margin: 3rem 0 1rem;">' . htmlspecialchars($page['title'], ENT_QUOTES, 'UTF-8') . '</h1>\n        </div>';
+
+            // Рендерить секции
+            foreach ($collectionData['sections'] as $section) {
+                $html .= '<section style="padding-top: 3rem; padding-bottom: 3rem;">\n                <div class="container">\n                    <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 2rem;">' . htmlspecialchars($section['title'], ENT_QUOTES, 'UTF-8') . '</h3>\n                    <div class="articles-grid">';
+
+                // Рендерить карточки
+                foreach ($section['items'] as $item) {
+                    // Sanitize image URL for src attribute
+                    $imageUrl = $this->sanitizeImageUrl($item['image'] ?? '');
+                    $html .= '<div class="article-card">\n                    <img src="' . $imageUrl . '" alt="' . htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8') . '">\n                    <div class="article-card-content">\n                        <h3>' . htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8') . '</h3>\n                        <p>' . htmlspecialchars($item['snippet'], ENT_QUOTES, 'UTF-8') . '</p>\n                        <a href="' . htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') . '">Читать далее &rarr;</a>\n                    </div>\n                </div>';
+                }
+
+                $html .= '</div></div></section>';
+            }
+
+            $html .= '\n    </main>\n    \n    <footer class="main-footer">\n        <p>&copy; 2025 Healthcare Hacks Brazil</p>\n    </footer>\n</body>\n</html>';
+
+            echo $html;
+            exit;
+        } catch (\Exception $e) {
+            // On error, fallback to 404
+            @file_put_contents(__DIR__ . '/../../../logs/public-page-debug.log', date('c') . " | renderCollectionPage error: " . $e->getMessage() . PHP_EOL, FILE_APPEND | LOCK_EX);
+            $this->render404();
+        }
+    }
+
+    /**
+     * Sanitize image URL used in src attributes — protect against javascript: and data: schemes
+     */
+    private function sanitizeImageUrl(string $url): string
+    {
+        $url = filter_var($url, FILTER_SANITIZE_URL);
+        if (preg_match('/^(javascript|data):/i', $url)) {
+            return '/uploads/default-card.jpg';
+        }
+        if (!preg_match('~^(/|https://)~i', $url)) {
+            return '/uploads/default-card.jpg';
+        }
+        return htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
     }
 
 }

@@ -6,6 +6,9 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Infrastructure\Database\Connection;
 
+// Ensure tests always use sqlite connection to avoid touching real MySQL during CI
+putenv('DB_DEFAULT=sqlite');
+
 // create file-backed sqlite PDO so server (started separately) and tests share DB
 $tmpDir = __DIR__ . '/tmp';
 if (!is_dir($tmpDir)) {
@@ -31,6 +34,20 @@ if (file_exists($schemaFile)) {
     $pdo->exec($sql);
     // mark schema as loaded for tests to avoid re-running schema creation
     $GLOBALS['TEST_SCHEMA_LOADED'] = true;
+
+    // Seed minimal test users often expected by integration tests
+    try {
+        $stmt = $pdo->prepare('INSERT OR IGNORE INTO users (id, username, email, password_hash, role, is_active, created_at) VALUES (:id, :username, :email, :password_hash, :role, 1, datetime("now"))');
+        $users = [
+            ['id' => 'test-user', 'username' => 'test-user', 'email' => 'test@local', 'password_hash' => password_hash('test', PASSWORD_DEFAULT), 'role' => 'editor'],
+            ['id' => 'tester', 'username' => 'tester', 'email' => 'tester@local', 'password_hash' => password_hash('test', PASSWORD_DEFAULT), 'role' => 'editor'],
+        ];
+        foreach ($users as $u) {
+            $stmt->execute($u);
+        }
+    } catch (Throwable $e) {
+        // best-effort seeding for tests; ignore errors here so bootstrap doesn't fail unexpectedly
+    }
 }
 
 // inject into Connection::$instance via Reflection

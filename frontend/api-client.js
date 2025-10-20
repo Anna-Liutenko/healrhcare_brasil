@@ -166,7 +166,7 @@ class ApiClient {
     async login(username, password) {
         const data = await this.request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password })
+            body: { username, password }
         });
 
         if (data.token) {
@@ -213,9 +213,25 @@ class ApiClient {
      * GET /api/pages
      */
     async getPages() {
-        return await this.request('/api/pages', {
+        const data = await this.request('/api/pages', {
             method: 'GET'
         });
+
+        // Backend returns dates in "YYYY-MM-DD HH:MM:SS" format.
+        // Normalize to ISO-like string with 'T' so `new Date()` parses consistently in browsers.
+        if (Array.isArray(data)) {
+            return data.map((item) => {
+                ['createdAt', 'updatedAt', 'publishedAt'].forEach((k) => {
+                    if (typeof item[k] === 'string' && item[k].includes(' ')) {
+                        // Only replace the first space between date and time
+                        item[k] = item[k].replace(' ', 'T');
+                    }
+                });
+                return item;
+            });
+        }
+
+        return data;
     }
 
     /**

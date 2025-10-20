@@ -1,0 +1,85 @@
+# PHP / Laravel / Symfony / Generic PHP Project
+/vendor/
+/composer.lock
+/.env
+/.env.local
+/.env.*.local
+
+# Node.js (если есть frontend)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs/
+*.log
+backend/logs/
+backend/public/logs/
+
+# Cache
+cache/
+tmp/
+temp/
+backend/tmp/
+
+# Database
+*.sql
+*.sqlite
+*.db
+database/backups/
+backups/
+
+# XAMPP specific (если копируешь в XAMPP для тестирования)
+# Раскомментируй если не хочешь коммитить XAMPP файлы:
+# /xampp/
+# /htdocs/
+
+# Uploads (может содержать чувствительные данные)
+uploads/
+backend/uploads/
+
+# Tests
+tests/_output/
+.phpunit.result.cache
+
+# Build artifacts
+build/
+dist/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+
+# Windows specific
+desktop.ini
+$RECYCLE.BIN/
+
+# macOS specific
+.AppleDouble
+.LSOverride
+
+# Linux specific
+*~
+
+# Custom project files (добавь свои если нужно)
+# temp_*.php
+# debug_*.html
+# test_*.php

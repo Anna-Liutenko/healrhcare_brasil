@@ -11,6 +11,7 @@ use Infrastructure\Repository\MySQLSessionRepository;
 use Infrastructure\Middleware\ApiLogger;
 use Infrastructure\Auth\AuthHelper;
 use Infrastructure\Auth\UnauthorizedException;
+use Presentation\Transformer\EntityToArrayTransformer;
 
 /**
  * Auth Controller
@@ -19,6 +20,8 @@ use Infrastructure\Auth\UnauthorizedException;
  */
 class AuthController
 {
+    use JsonResponseTrait;
+
     /**
      * POST /api/auth/login
      */
@@ -49,12 +52,7 @@ class AuthController
             $response = [
                 'success' => true,
                 'token' => $result['token'],
-                'user' => [
-                    'id' => $result['user']->getId(),
-                    'username' => $result['user']->getUsername(),
-                    'email' => $result['user']->getEmail(),
-                    'role' => $result['user']->getRole()->value
-                ]
+                'user' => EntityToArrayTransformer::userToArray($result['user'])
             ];
 
             ApiLogger::logResponse(200, $response, $startTime);
@@ -117,12 +115,7 @@ class AuthController
         try {
             $user = AuthHelper::requireAuth();
 
-            $response = [
-                'id' => $user->getId(),
-                'username' => $user->getUsername(),
-                'email' => $user->getEmail(),
-                'role' => $user->getRole()->value
-            ];
+            $response = EntityToArrayTransformer::userToArray($user);
 
             ApiLogger::logResponse(200, $response, $startTime);
             $this->jsonResponse($response, 200);
@@ -138,17 +131,5 @@ class AuthController
             ApiLogger::logResponse(500, $error, $startTime);
             $this->jsonResponse($error, 500);
         }
-    }
-
-    // ===== HELPERS =====
-
-    // ...existing code... (helper removed)
-
-    private function jsonResponse(array $data, int $statusCode = 200): void
-    {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data);
-        exit;
     }
 }

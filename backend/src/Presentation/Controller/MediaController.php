@@ -7,6 +7,7 @@ use Application\UseCase\UploadMedia;
 use Application\UseCase\DeleteMedia;
 use Infrastructure\Repository\MySQLMediaRepository;
 use Infrastructure\Middleware\ApiLogger;
+use Presentation\Transformer\EntityToArrayTransformer;
 use InvalidArgumentException;
 
 /**
@@ -16,6 +17,8 @@ use InvalidArgumentException;
  */
 class MediaController
 {
+    use JsonResponseTrait;
+
     /**
      * GET /api/media
      * Get all media files
@@ -34,18 +37,10 @@ class MediaController
             $mediaFiles = $useCase->execute($type);
 
             // Convert to array format
-            $mediaData = array_map(function ($mediaFile) {
-                return [
-                    'id' => $mediaFile->getId(),
-                    'filename' => $mediaFile->getFilename(),
-                    'url' => $mediaFile->getUrl(),
-                    'type' => $mediaFile->getType(),
-                    'size' => $mediaFile->getSize(),
-                    'human_size' => $mediaFile->getHumanReadableSize(),
-                    'uploaded_by' => $mediaFile->getUploadedBy(),
-                    'uploaded_at' => $mediaFile->getUploadedAt()->format('Y-m-d H:i:s')
-                ];
-            }, $mediaFiles);
+            $mediaData = array_map(
+                [EntityToArrayTransformer::class, 'mediaFileToArray'],
+                $mediaFiles
+            );
 
             $response = $mediaData;
             ApiLogger::logResponse(200, $response, $startTime);
@@ -136,21 +131,11 @@ class MediaController
             ApiLogger::logResponse($statusCode, $error, $startTime);
             $this->jsonResponse($error, $statusCode);
 
-        } catch (\Exception $e) {
+        } catch (\Throwable $throwable) {
             $error = ['error' => 'Internal server error'];
-            ApiLogger::logError('MediaController::delete() error', $e);
+            ApiLogger::logError('MediaController::delete() error', $throwable, ['mediaId' => $id]);
             ApiLogger::logResponse(500, $error, $startTime);
             $this->jsonResponse($error, 500);
         }
-    }
-
-    /**
-     * Send JSON response
-     */
-    private function jsonResponse($data, int $statusCode = 200): void
-    {
-        http_response_code($statusCode);
-        header('Content-Type: application/json');
-        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 }

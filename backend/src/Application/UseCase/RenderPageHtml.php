@@ -127,21 +127,88 @@ class RenderPageHtml
             // legacy short names
             'html' => $this->renderHtmlBlock($data),
             'text' => $this->renderLegacyText($data),
+            // Support both 'hero' and 'main-screen' for the large header section
+            'hero' => $this->renderHero($data),
             'main-screen' => $this->renderMainScreen($data),
             'page-header' => $this->renderPageHeader($data),
+            // Services block — accept both 'service-cards' and short 'services'
             'service-cards' => $this->renderServiceCards($data),
+            'services' => $this->renderServiceCards($this->normalizeServicesData($data)),
+            // Articles/cards list — accept synonyms
             'article-cards' => $this->renderArticleCards($data),
+            'cards' => $this->renderArticleCards($this->normalizeCardsData($data)),
+            'articles' => $this->renderArticleCards($this->normalizeCardsData($data)),
+            // About section — accept both 'about-section' and short 'about'
             'about-section' => $this->renderAboutSection($data),
+            'about' => $this->renderAboutSection($this->normalizeAboutData($data)),
             'text-block' => $this->renderTextBlock($data),
             'image-block' => $this->renderImageBlock($data),
             'blockquote' => $this->renderBlockquote($data),
+            // CTA button — accept 'button' and 'cta'
             'button' => $this->renderButton($data),
+            'cta' => $this->renderButton($data),
             'section-title' => $this->renderSectionTitle($data),
             'section-divider' => $this->renderSectionDivider($data),
             'chat-bot' => $this->renderChatBot($data),
             'spacer' => $this->renderSpacer($data),
             default => '<div class="block block-' . htmlspecialchars($type, ENT_QUOTES, 'UTF-8') . '">Unknown block type</div>'
         };
+    }
+
+    /**
+     * Normalize and render classic "hero" block coming from editor (heading/subheading).
+     * This reuses the main-screen renderer with mapped keys.
+     */
+    private function renderHero(array $data): string
+    {
+        $normalized = [
+            'backgroundImage' => $data['backgroundImage'] ?? ($data['image'] ?? 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?q=80&w=2070&auto=format&fit=crop'),
+            'title' => $data['heading'] ?? ($data['title'] ?? ''),
+            'text' => $data['subheading'] ?? ($data['text'] ?? ''),
+            'buttonText' => $data['buttonText'] ?? ($data['ctaText'] ?? 'Узнать больше'),
+            'buttonLink' => $data['buttonLink'] ?? ($data['ctaLink'] ?? '#'),
+        ];
+        return $this->renderMainScreen($normalized);
+    }
+
+    /**
+     * Some payloads may use 'items' instead of 'cards' for cards-like sections.
+     */
+    private function normalizeCardsData(array $data): array
+    {
+        if (!isset($data['cards']) && isset($data['items']) && is_array($data['items'])) {
+            $data['cards'] = $data['items'];
+        }
+        return $data;
+    }
+
+    /**
+     * Normalize services block where frontend could send short keys.
+     */
+    private function normalizeServicesData(array $data): array
+    {
+        // Align to service-cards structure
+        if (!isset($data['cards']) && isset($data['items']) && is_array($data['items'])) {
+            $data['cards'] = $data['items'];
+        }
+        return $data;
+    }
+
+    /**
+     * Normalize about block when frontend sends a single 'content' string
+     * instead of an array of paragraphs.
+     */
+    private function normalizeAboutData(array $data): array
+    {
+        if (!isset($data['paragraphs'])) {
+            $content = $data['content'] ?? null;
+            if (is_string($content) && $content !== '') {
+                $data['paragraphs'] = [$content];
+            } else {
+                $data['paragraphs'] = [];
+            }
+        }
+        return $data;
     }
 
     // Legacy HTML block (older editor used 'html' type with raw html in data['html'])

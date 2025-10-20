@@ -23,22 +23,33 @@ class MySQLSessionRepository implements SessionRepositoryInterface
     /**
      * Создать новую сессию
      */
-    public function create(string $userId, int $expiresIn = 86400): string
+    public function create(string $userId, int $expiresIn = 86400, ?string $csrfToken = null): string
     {
         // Генерация безопасного токена (используем id как токен)
         $token = bin2hex(random_bytes(32));
 
         $expiresAt = date('Y-m-d H:i:s', time() + $expiresIn);
 
+        // Ensure a csrf token exists so cookie-based sessions can be validated
+        if ($csrfToken === null) {
+            try {
+                $csrfToken = bin2hex(random_bytes(16));
+            } catch (\Throwable $e) {
+                // Fallback to less-strong token generation, extremely unlikely
+                $csrfToken = bin2hex(openssl_random_pseudo_bytes(16));
+            }
+        }
+
         $stmt = $this->pdo->prepare(
-            'INSERT INTO sessions (id, user_id, expires_at)
-             VALUES (:id, :user_id, :expires_at)'
+            'INSERT INTO sessions (id, user_id, expires_at, csrf_token)
+             VALUES (:id, :user_id, :expires_at, :csrf_token)'
         );
 
         $stmt->execute([
             'id' => $token,
             'user_id' => $userId,
-            'expires_at' => $expiresAt
+            'expires_at' => $expiresAt,
+            'csrf_token' => $csrfToken
         ]);
 
         return $token;
@@ -50,7 +61,7 @@ class MySQLSessionRepository implements SessionRepositoryInterface
     public function findByToken(string $token): ?array
     {
         $stmt = $this->pdo->prepare(
-            'SELECT user_id, expires_at
+            'SELECT user_id, expires_at, csrf_token
              FROM sessions
              WHERE id = :id'
         );

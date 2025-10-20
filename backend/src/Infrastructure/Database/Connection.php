@@ -75,11 +75,16 @@ class Connection
                     $dbConfig['charset']
                 );
 
+                // Merge options with timeout
+                $options = $dbConfig['options'] ?? [];
+                $timeout = $dbConfig['timeout'] ?? 5;
+                $options[PDO::ATTR_TIMEOUT] = $timeout;
+
                 $pdo = new PDO(
                     $dsn,
                     $dbConfig['username'],
                     $dbConfig['password'],
-                    $dbConfig['options']
+                    $options
                 );
             }
 

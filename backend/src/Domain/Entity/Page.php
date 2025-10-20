@@ -15,16 +15,6 @@ use DateTime;
  */
 class Page
 {
-    // Если страница была импортирована из статического шаблона,
-    // сюда сохраняется slug исходного шаблона (например: 'guides')
-    private ?string $sourceTemplateSlug = null;
-    
-    // Pre-rendered static HTML cached at publish time
-    private ?string $renderedHtml = null;
-
-    // Optional custom menu label (overrides title in menus)
-    private ?string $menuTitle = null;
-
     public function __construct(
         private string $id,
         private string $title,
@@ -43,12 +33,11 @@ class Page
         private ?DateTime $trashedAt,
         private string $createdBy,
         private ?array $collectionConfig = null,
-        private ?string $pageSpecificCode = null
-    , ?string $renderedHtml = null,
-    ?string $menuTitle = null
+        private ?string $pageSpecificCode = null,
+        private ?string $renderedHtml = null,
+        private ?string $menuTitle = null,
+        private ?string $sourceTemplateSlug = null
     ) {
-        $this->renderedHtml = $renderedHtml;
-        $this->menuTitle = $menuTitle;
     }
 
     // Getters
@@ -135,6 +124,70 @@ class Page
     public function getCollectionConfig(): ?array
     {
         return $this->collectionConfig;
+    }
+
+    /**
+     * Получить URL картинки для карточки в коллекции
+     * 
+     * Приоритет:
+     * 1. Кастомная картинка из collectionConfig.cardImages
+     * 2. Картинка из блока main-screen
+     * 3. Картинка из блока article-cards
+     * 4. Дефолтная картинка
+     * 
+     * @param array|null $blocks Блоки страницы
+     * @return string URL картинки
+     */
+    public function getCardImage(?array $blocks = null): string
+    {
+        // 1. Кастомная картинка из collectionConfig
+        if ($this->collectionConfig && 
+            isset($this->collectionConfig['cardImages'][$this->id])) {
+            return $this->collectionConfig['cardImages'][$this->id];
+        }
+        
+        // 2-3. Извлечь из блоков (если переданы)
+        if ($blocks) {
+            foreach ($blocks as $block) {
+                // Expect $block to be an object with getType() and getData()
+                $data = method_exists($block, 'getData') ? $block->getData() : (is_array($block) ? ($block['data'] ?? []) : []);
+                $type = method_exists($block, 'getType') ? $block->getType() : (is_array($block) ? ($block['type'] ?? null) : null);
+
+                // Main-screen / hero с картинкой
+                if (in_array($type, ['main-screen', 'hero']) && 
+                    isset($data['image']['url'])) {
+                    return $data['image']['url'];
+                }
+                
+                // Article-cards с картинками
+                if ($type === 'article-cards' && 
+                    isset($data['cards'][0]['image']['url'])) {
+                    return $data['cards'][0]['image']['url'];
+                }
+            }
+        }
+        
+        // 4. Fallback
+        return '/uploads/default-card.jpg';
+    }
+
+    /**
+     * Установить кастомную картинку для карточки в коллекции
+     * 
+     * @param string $imageUrl URL картинки
+     */
+    public function setCardImage(string $imageUrl): void
+    {
+        if (!$this->collectionConfig) {
+            $this->collectionConfig = [];
+        }
+        
+        if (!isset($this->collectionConfig['cardImages'])) {
+            $this->collectionConfig['cardImages'] = [];
+        }
+        
+        $this->collectionConfig['cardImages'][$this->id] = $imageUrl;
+        $this->touch();
     }
 
     public function getPageSpecificCode(): ?string
