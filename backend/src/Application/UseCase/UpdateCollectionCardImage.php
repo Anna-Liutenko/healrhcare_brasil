@@ -1,53 +1,57 @@
 <?php
 declare(strict_types=1);
 
+
 namespace Application\UseCase;
 
 use Domain\Repository\PageRepositoryInterface;
+use Domain\Repository\BlockRepositoryInterface;
+use Domain\Entity\Page;
+use InvalidArgumentException;
 
-/**
- * Use Case: Обновить картинку карточки в коллекции
- */
 class UpdateCollectionCardImage
 {
-    private PageRepositoryInterface $pageRepository;
-    
-    public function __construct(PageRepositoryInterface $pageRepository)
+    public function __construct(
+        private PageRepositoryInterface $pageRepository,
+        private BlockRepositoryInterface $blockRepository
+    ) {}
+
+    public function execute(string $collectionPageId, string $targetPageId, string $imageUrl): array
     {
-        $this->pageRepository = $pageRepository;
-    }
-    
-    /**
-     * Выполнить: обновить картинку карточки
-     * 
-     * @param string $collectionPageId UUID страницы-коллекции
-     * @param string $targetPageId UUID страницы, чью картинку меняем
-     * @param string $imageUrl Новый URL картинки
-     */
-    public function execute(
-        string $collectionPageId, 
-        string $targetPageId, 
-        string $imageUrl
-    ): void {
-        // 1. Загрузить страницу-коллекцию
-        $collectionPage = $this->pageRepository->findById($collectionPageId);
-        
-        if (!$collectionPage || !$collectionPage->getType()->isCollection()) {
-            throw new \InvalidArgumentException('Page is not a collection');
+        $collection = $this->pageRepository->findById($collectionPageId);
+        if (!$collection || !$collection->getType()->isCollection()) {
+            throw new InvalidArgumentException('Collection page not found or invalid type');
         }
-        
-        // 2. Обновить collectionConfig.cardImages[targetPageId]
-        $config = $collectionPage->getCollectionConfig() ?? [];
-        
-        if (!isset($config['cardImages'])) {
-            $config['cardImages'] = [];
+
+        $config = $collection->getCollectionConfig();
+        $excludePages = $config['excludePages'] ?? [];
+        if (in_array($targetPageId, $excludePages, true)) {
+            throw new InvalidArgumentException('Target page is excluded from collection');
         }
-        
-        $config['cardImages'][$targetPageId] = $imageUrl;
-        
-        // 3. Сохранить
-        $collectionPage->setCollectionConfig($config);
-        // Use the repository's public save() method to persist changes
-        $this->pageRepository->save($collectionPage);
+
+        $targetPage = $this->pageRepository->findById($targetPageId);
+        if (!$targetPage) {
+            throw new InvalidArgumentException('Target page not found');
+        }
+
+        $targetPage->setCardImage($imageUrl);
+        $this->pageRepository->save($targetPage);
+
+        $blocks = $this->blockRepository->findByPageId($targetPageId);
+        $updatedCard = [
+            'id' => $targetPage->getId(),
+            'title' => $targetPage->getTitle(),
+            'snippet' => $targetPage->getSnippet(),
+            'image' => $targetPage->getCardImage($blocks),
+            'url' => $targetPage->getSlug(),
+            'type' => $targetPage->getType()->getName(),
+            'publishedAt' => $targetPage->getPublishedAt()->format('Y-m-d'),
+        ];
+
+        return [
+            'success' => true,
+            'message' => 'Card image updated',
+            'updatedCard' => $updatedCard,
+        ];
     }
 }
