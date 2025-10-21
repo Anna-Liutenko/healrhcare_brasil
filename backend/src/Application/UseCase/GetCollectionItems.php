@@ -132,7 +132,7 @@ class GetCollectionItems
             $sectionTitle = $section['title'] ?? 'Без названия';
             $sectionTypes = $section['sourceTypes'] ?? [];
             
-            // Фильтровать карточки по типам секции
+            // Здесь мы фильтруем карточки по типам секции
             $sectionCards = array_filter($cards, function($card) use ($sectionTypes) {
                 return in_array($card['type'], $sectionTypes);
             });
