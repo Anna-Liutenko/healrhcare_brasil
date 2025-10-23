@@ -58,18 +58,31 @@ class CollectionController
     {
         try {
             // Basic validation of UUID-ish id
-            if (!preg_match('/^[a-f0-9-]{36}$/i', $pageId)) {
+            if (!preg_match('/^[a-z0-9-]{36}$/i', $pageId)) {
                 http_response_code(400);
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => 'Invalid page id']);
                 return;
             }
 
+            // Read pagination params from query string
+            $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+            $limit = isset($_GET['limit']) ? max(1, min(50, (int)$_GET['limit'])) : 12;
+
             $pageRepo = $this->pageRepository;
             $blockRepo = $this->blockRepository;
 
+            // Read optional section parameter
+            $section = $_GET['section'] ?? null;
+            if ($section !== null && !in_array($section, ['guides', 'articles'], true)) {
+                http_response_code(400);
+                header('Content-Type: application/json');
+                echo json_encode(['success' => false, 'error' => 'Invalid section']);
+                return;
+            }
+
             $useCase = new GetCollectionItems($pageRepo, $blockRepo);
-            $result = $useCase->execute($pageId);
+            $result = $useCase->execute($pageId, $section, $page, $limit);
             
             header('Content-Type: application/json');
             echo json_encode([
@@ -99,7 +112,7 @@ class CollectionController
     {
         try {
             // Basic validation
-            if (!preg_match('/^[a-f0-9-]{36}$/i', $pageId)) {
+            if (!preg_match('/^[a-z0-9-]{36}$/i', $pageId)) {
                 http_response_code(400);
                 header('Content-Type: application/json');
                 echo json_encode(['success' => false, 'error' => 'Invalid page id']);
@@ -206,7 +219,11 @@ class CollectionController
                 'message' => 'Card image updated'
             ]);
         } catch (\Exception $e) {
-            http_response_code(400);
+            $code = (int)$e->getCode();
+            if ($code < 400 || $code > 599) {
+                $code = 400;
+            }
+            http_response_code($code);
             header('Content-Type: application/json');
             echo json_encode([
                 'success' => false,

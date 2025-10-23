@@ -8,13 +8,20 @@ use Domain\Repository\PageRepositoryInterface;
 use Domain\Repository\BlockRepositoryInterface;
 use Domain\Entity\Page;
 use InvalidArgumentException;
+use Infrastructure\Repository\MySQLBlockRepository;
 
 class UpdateCollectionCardImage
 {
     public function __construct(
         private PageRepositoryInterface $pageRepository,
-        private BlockRepositoryInterface $blockRepository
-    ) {}
+        ?BlockRepositoryInterface $blockRepository = null
+    ) {
+        // Allow callers to omit block repository for convenience (controller tests, legacy calls)
+        if ($blockRepository === null) {
+            $blockRepository = new MySQLBlockRepository();
+        }
+        $this->blockRepository = $blockRepository;
+    }
 
     public function execute(string $collectionPageId, string $targetPageId, string $imageUrl): array
     {
@@ -34,18 +41,32 @@ class UpdateCollectionCardImage
             throw new InvalidArgumentException('Target page not found');
         }
 
-        $targetPage->setCardImage($imageUrl);
+        // Validate and sanitize image URL before storing
+        $sanitized = filter_var($imageUrl, FILTER_SANITIZE_URL);
+        if (!$sanitized) {
+            throw new InvalidArgumentException('Invalid image URL');
+        }
+        // Block dangerous schemes
+        if (preg_match('/^(javascript|data|vbscript):/i', $sanitized)) {
+            throw new InvalidArgumentException('Unsafe URL scheme');
+        }
+        // Allow absolute https URLs or relative paths starting with '/'
+        if (!preg_match('~^(https?://|/)~i', $sanitized)) {
+            throw new InvalidArgumentException('URL must be HTTPS or a relative path');
+        }
+
+        $targetPage->setCardImage($sanitized);
         $this->pageRepository->save($targetPage);
 
         $blocks = $this->blockRepository->findByPageId($targetPageId);
         $updatedCard = [
             'id' => $targetPage->getId(),
             'title' => $targetPage->getTitle(),
-            'snippet' => $targetPage->getSnippet(),
+            'snippet' => $targetPage->getSeoDescription() ?? '',
             'image' => $targetPage->getCardImage($blocks),
             'url' => $targetPage->getSlug(),
-            'type' => $targetPage->getType()->getName(),
-            'publishedAt' => $targetPage->getPublishedAt()->format('Y-m-d'),
+            'type' => method_exists($targetPage->getType(), 'getName') ? $targetPage->getType()->getName() : ($targetPage->getType()->value ?? ''),
+            'publishedAt' => $targetPage->getPublishedAt()?->format('Y-m-d') ?? null,
         ];
 
         return [

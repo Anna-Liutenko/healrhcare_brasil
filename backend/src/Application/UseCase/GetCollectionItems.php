@@ -28,9 +28,11 @@ class GetCollectionItems
      * Выполнить: получить элементы коллекции
      * 
      * @param string $collectionPageId UUID страницы-коллекции
-     * @return array Массив с секциями и карточками
+     * @param int $page Номер страницы (начиная с 1)
+     * @param int $limit Количество элементов на странице
+     * @return array Массив с секциями, карточками и мета-информацией о пагинации
      */
-    public function execute(string $collectionPageId): array
+    public function execute(string $collectionPageId, ?string $sectionSlug = null, int $page = 1, int $limit = 12): array
     {
         // 1. Загрузить страницу-коллекцию
         $collectionPage = $this->pageRepository->findById($collectionPageId);
@@ -47,10 +49,27 @@ class GetCollectionItems
         $sections = $config['sections'] ?? null;
         $excludePages = $config['excludePages'] ?? [];
         $cardImages = $config['cardImages'] ?? [];
+
+        // Map section slug to page types (allow extension via config later)
+        $sectionTypeMap = [
+            'guides' => ['guide'],
+            'articles' => ['article'],
+            null => ['guide', 'article']
+        ];
+
+        if ($sectionSlug !== null && !isset($sectionTypeMap[$sectionSlug])) {
+            throw new \InvalidArgumentException('Invalid section: ' . $sectionSlug);
+        }
+
+        $allowedTypes = $sectionTypeMap[$sectionSlug];
         
-        // 3. Загрузить все опубликованные страницы нужных типов
+        // 3. Загрузить страницы, отфильтрованные по секции
         $allPages = [];
         foreach ($sourceTypes as $type) {
+            // Skip types not allowed for this section
+            if (!in_array($type, $allowedTypes, true)) {
+                continue;
+            }
             $pages = $this->pageRepository->findByTypeAndStatus($type, 'published');
             $allPages = array_merge($allPages, $pages);
         }
@@ -69,37 +88,68 @@ class GetCollectionItems
             return $sortOrder === 'desc' ? -$comparison : $comparison;
         });
         
-        // 6. Сформировать карточки
+        // 6. Применить пагинацию (offset/limit)
+        $offset = ($page - 1) * $limit;
+        $totalItems = count($allPages);
+        $totalPages = $limit > 0 ? (int)ceil($totalItems / $limit) : 1;
+        $paginatedPages = array_slice($allPages, $offset, $limit);
+
+        // 7. Сформировать карточки (только для текущей страницы)
         $cards = [];
-        foreach ($allPages as $page) {
+        foreach ($paginatedPages as $paginatedPage) {
             // Загрузить блоки для извлечения картинки
-            $blocks = $this->blockRepository->findByPageId($page->getId());
-            
+            $blocks = $this->blockRepository->findByPageId($paginatedPage->getId());
+
             $cards[] = [
-                'id' => $page->getId(),
-                'title' => $page->getTitle(),
-                'snippet' => $page->getSeoDescription() ?? '',
-                'image' => $page->getCardImage($blocks),
-                'url' => '/' . $page->getSlug(),
-                'type' => $page->getType()->value,
-                'publishedAt' => $page->getPublishedAt()?->format('Y-m-d H:i:s')
+                'id' => $paginatedPage->getId(),
+                'title' => $paginatedPage->getTitle(),
+                'snippet' => $paginatedPage->getSeoDescription() ?? '',
+                'image' => $paginatedPage->getCardImage($blocks),
+                'url' => '/healthcare-cms-backend/public/p/' . $paginatedPage->getSlug(),
+                'type' => $paginatedPage->getType()->value,
+                'publishedAt' => $paginatedPage->getPublishedAt()?->format('Y-m-d H:i:s')
             ];
         }
         
-        // 7. Группировать по секциям (если заданы)
-        if ($sections) {
-            return $this->groupBySections($cards, $sections);
-        }
-        
-        // 8. Вернуть одну секцию со всеми карточками
-        return [
-            'sections' => [
-                [
-                    'title' => 'Все материалы',
-                    'items' => $cards
+        // 8. Если запрошена конкретная секция, вернуть её как единственную секцию
+        if ($sectionSlug !== null) {
+            $sectionTitle = $sectionSlug === 'guides' ? 'Гайды' : ($sectionSlug === 'articles' ? 'Статьи' : 'Все материалы');
+            $result = [
+                'sections' => [
+                    [
+                        'title' => $sectionTitle,
+                        'items' => $cards
+                    ]
                 ]
-            ]
+            ];
+        } else {
+            // 8b. Группировать по секциям (если заданы) или вернуть одну секцию со всеми карточками
+            if ($sections) {
+                $result = $this->groupBySections($cards, $sections);
+            } else {
+                $result = [
+                    'sections' => [
+                        [
+                            'title' => 'Все материалы',
+                            'items' => $cards
+                        ]
+                    ]
+                ];
+            }
+        }
+
+        // 9. Добавить мета-информацию о пагинации
+        $result['pagination'] = [
+            'currentPage' => $page,
+            'totalPages' => $totalPages,
+            'totalItems' => $totalItems,
+            'itemsPerPage' => $limit,
+            'hasNextPage' => $page < $totalPages,
+            'hasPrevPage' => $page > 1,
+            'currentSection' => $sectionSlug
         ];
+
+        return $result;
     }
     
     /**

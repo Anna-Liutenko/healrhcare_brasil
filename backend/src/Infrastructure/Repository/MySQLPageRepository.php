@@ -194,14 +194,14 @@ class MySQLPageRepository implements PageRepositoryInterface
                 id, title, slug, status, type,
                 seo_title, seo_description, seo_keywords,
                 show_in_menu, menu_title, show_in_sitemap, menu_order,
-                collection_config, page_specific_code,
+                collection_config, page_specific_code, card_image,
                 created_at, updated_at, published_at, trashed_at,
                 created_by, rendered_html, source_template_slug
             ) VALUES (
                 :id, :title, :slug, :status, :type,
                 :seo_title, :seo_description, :seo_keywords,
                 :show_in_menu, :menu_title, :show_in_sitemap, :menu_order,
-                :collection_config, :page_specific_code,
+                :collection_config, :page_specific_code, :card_image,
                 :created_at, :updated_at, :published_at, :trashed_at,
                 :created_by, :rendered_html, :source_template_slug
             )
@@ -222,6 +222,7 @@ class MySQLPageRepository implements PageRepositoryInterface
             'menu_order' => $page->getMenuOrder(),
             'collection_config' => $page->getCollectionConfig() ? json_encode($page->getCollectionConfig()) : null,
             'page_specific_code' => $page->getPageSpecificCode(),
+            'card_image' => $page->getCardImage(),
             'created_at' => $page->getCreatedAt()->format('Y-m-d H:i:s'),
             'updated_at' => $page->getUpdatedAt()->format('Y-m-d H:i:s'),
             'published_at' => $page->getPublishedAt()?->format('Y-m-d H:i:s'),
@@ -249,6 +250,7 @@ class MySQLPageRepository implements PageRepositoryInterface
                 menu_order = :menu_order,
                 collection_config = :collection_config,
                 page_specific_code = :page_specific_code,
+                card_image = :card_image,
                 rendered_html = :rendered_html,
                 updated_at = :updated_at,
                 published_at = :published_at,
@@ -271,6 +273,7 @@ class MySQLPageRepository implements PageRepositoryInterface
             'menu_order' => $page->getMenuOrder(),
             'collection_config' => $page->getCollectionConfig() ? json_encode($page->getCollectionConfig()) : null,
             'page_specific_code' => $page->getPageSpecificCode(),
+            'card_image' => $page->getCardImage(),
             'rendered_html' => $page->getRenderedHtml(),
             'updated_at' => $page->getUpdatedAt()->format('Y-m-d H:i:s'),
             'published_at' => $page->getPublishedAt()?->format('Y-m-d H:i:s'),
@@ -298,7 +301,8 @@ class MySQLPageRepository implements PageRepositoryInterface
             trashedAt: $row['trashed_at'] ? new DateTime($row['trashed_at']) : null,
             createdBy: $row['created_by'],
             collectionConfig: $row['collection_config'] ? json_decode($row['collection_config'], true) : null,
-            pageSpecificCode: $row['page_specific_code']
+            pageSpecificCode: $row['page_specific_code'],
+            cardImage: $row['card_image'] ?? null
         );
 
         // Optional properties set via setters to avoid changing constructor signature

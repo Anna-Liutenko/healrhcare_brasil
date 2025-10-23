@@ -6,6 +6,11 @@ declare(strict_types=1);
  * Entry Point - Expats Health Brazil CMS API
  */
 
+// Enable E2E debugging if not already set
+if (!getenv('E2E_DEBUG')) {
+    putenv('E2E_DEBUG=1');
+}
+
 // Автозагрузка Composer
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -126,11 +131,11 @@ try {
         $controller->delete($matches[1]);
     }
     // Collection endpoints (auto-assembled pages)
-    elseif (preg_match('#^/api/pages/([a-f0-9-]{36})/collection-items$#', $uri, $matches) && $method === 'GET') {
+    elseif (preg_match('#^/api/pages/([a-z0-9-]{36})/collection-items$#i', $uri, $matches) && $method === 'GET') {
         $controller = new \Presentation\Controller\CollectionController();
         $controller->getItems($matches[1]);
     }
-    elseif (preg_match('#^/api/pages/([a-f0-9-]{36})/card-image$#', $uri, $matches) && $method === 'PATCH') {
+    elseif (preg_match('#^/api/pages/([a-z0-9-]{36})/card-image$#i', $uri, $matches) && $method === 'PATCH') {
         $controller = new \Presentation\Controller\CollectionController();
         $controller->updateCardImage($matches[1]);
     }

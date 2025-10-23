@@ -8,7 +8,7 @@ $sourceRoot = "C:\Users\annal\Documents\Мои сайты\Сайт о здрав
 $backendSource = "$sourceRoot\backend"
 $frontendSource = "$sourceRoot\frontend"
 $backendTarget = "C:\xampp\htdocs\healthcare-cms-backend"
-$frontendTarget = "C:\xampp\htdocs\visual-editor-standalone"
+$frontendTarget = "C:\xampp\htdocs\healthcare-cms-frontend"
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "PROJECT SYNC TO XAMPP" -ForegroundColor Cyan

@@ -8,6 +8,8 @@ use Application\UseCase\GetPageWithBlocks;
 use Application\UseCase\GetPublishedPages;
 use Infrastructure\Repository\MySQLPageRepository;
 use Infrastructure\Repository\MySQLBlockRepository;
+use Presentation\Helper\CollectionCardRenderer;
+use Presentation\Helper\CollectionHtmlBuilder;
 
 /**
  * Public Page Controller
@@ -602,29 +604,50 @@ class PublicPageController
             $pageRepo = new \Infrastructure\Repository\MySQLPageRepository();
             $blockRepo = new \Infrastructure\Repository\MySQLBlockRepository();
             
+            // Read page number and section from URL
+            $currentPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
+            $section = $_GET['section'] ?? 'guides'; // default to guides
+            $limit = 12;
+
+            // Validate section
+            if (!in_array($section, ['guides', 'articles'], true)) {
+                $section = 'guides';
+            }
+
             $useCase = new \Application\UseCase\GetCollectionItems($pageRepo, $blockRepo);
-            $collectionData = $useCase->execute($page['id']);
+            $collectionData = $useCase->execute($page['id'], $section, $currentPage, $limit);
+
+            // E2E diagnostic: log sections and items count to help debug empty collections
+            $secCount = isset($collectionData['sections']) ? count($collectionData['sections']) : 0;
+            $itemsCount = 0;
+            if (isset($collectionData['sections']) && is_array($collectionData['sections'])) {
+                foreach ($collectionData['sections'] as $s) {
+                    $itemsCount += isset($s['items']) ? count($s['items']) : 0;
+                }
+            }
+            $this->e2eLog(date('c') . " | renderCollectionPage | pageId=" . ($page['id'] ?? '') . " | section={$section} | secCount={$secCount} | itemsCount={$itemsCount} | currentPage={$currentPage}" . PHP_EOL);
+
+            $pagination = $collectionData['pagination'] ?? [
+                'currentPage' => $currentPage,
+                'totalPages' => 1,
+                'totalItems' => 0,
+                'itemsPerPage' => $limit,
+                'hasNextPage' => false,
+                'hasPrevPage' => false
+            ];
 
             http_response_code(200);
             header('Content-Type: text/html; charset=utf-8');
 
-            $html = '<!DOCTYPE html>\n<html lang="ru">\n<head>\n    <meta charset="UTF-8">\n    <title>' . htmlspecialchars($page['seo_title'] ?? $page['title'], ENT_QUOTES, 'UTF-8') . '</title>\n    <meta name="description" content="' . htmlspecialchars($page['seo_description'] ?? '', ENT_QUOTES, 'UTF-8') . '">\n    <link rel="stylesheet" href="/healthcare-cms-frontend/styles.css">\n</head>\n<body>\n    <header class="main-header">\n        <nav>\n            <a href="/">Главная</a>\n            <a href="/all-materials">Все материалы</a>\n        </nav>\n    </header>\n    \n    <main>\n        <div class="container">\n            <h1 style="font-family: var(--font-heading); font-size: 2.5rem; margin: 3rem 0 1rem;">' . htmlspecialchars($page['title'], ENT_QUOTES, 'UTF-8') . '</h1>\n        </div>';
-
-            // Рендерить секции
-            foreach ($collectionData['sections'] as $section) {
-                $html .= '<section style="padding-top: 3rem; padding-bottom: 3rem;">\n                <div class="container">\n                    <h3 style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 2rem;">' . htmlspecialchars($section['title'], ENT_QUOTES, 'UTF-8') . '</h3>\n                    <div class="articles-grid">';
-
-                // Рендерить карточки
-                foreach ($section['items'] as $item) {
-                    // Sanitize image URL for src attribute
-                    $imageUrl = $this->sanitizeImageUrl($item['image'] ?? '');
-                    $html .= '<div class="article-card">\n                    <img src="' . $imageUrl . '" alt="' . htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8') . '">\n                    <div class="article-card-content">\n                        <h3>' . htmlspecialchars($item['title'], ENT_QUOTES, 'UTF-8') . '</h3>\n                        <p>' . htmlspecialchars($item['snippet'], ENT_QUOTES, 'UTF-8') . '</p>\n                        <a href="' . htmlspecialchars($item['url'], ENT_QUOTES, 'UTF-8') . '">Читать далее &rarr;</a>\n                    </div>\n                </div>';
-                }
-
-                $html .= '</div></div></section>';
-            }
-
-            $html .= '\n    </main>\n    \n    <footer class="main-footer">\n        <p>&copy; 2025 Healthcare Hacks Brazil</p>\n    </footer>\n</body>\n</html>';
+            // Используем CollectionHtmlBuilder для создания полной страницы (DRY принцип)
+            $builder = new CollectionHtmlBuilder(
+                $page,
+                $collectionData,
+                $pagination,
+                $section,
+                $limit
+            );
+            $html = $builder->build();
 
             echo $html;
             exit;
@@ -633,21 +656,6 @@ class PublicPageController
             @file_put_contents(__DIR__ . '/../../../logs/public-page-debug.log', date('c') . " | renderCollectionPage error: " . $e->getMessage() . PHP_EOL, FILE_APPEND | LOCK_EX);
             $this->render404();
         }
-    }
-
-    /**
-     * Sanitize image URL used in src attributes — protect against javascript: and data: schemes
-     */
-    private function sanitizeImageUrl(string $url): string
-    {
-        $url = filter_var($url, FILTER_SANITIZE_URL);
-        if (preg_match('/^(javascript|data):/i', $url)) {
-            return '/uploads/default-card.jpg';
-        }
-        if (!preg_match('~^(/|https://)~i', $url)) {
-            return '/uploads/default-card.jpg';
-        }
-        return htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
     }
 
 }
