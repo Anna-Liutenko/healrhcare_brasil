@@ -65,26 +65,12 @@ $uri = str_replace('/backend', '', $uri);
 $debugLine2 = date('c') . " | CLEANED_URI=" . ($uri ?? 'NULL') . " | METHOD=" . $method . PHP_EOL;
 @file_put_contents(__DIR__ . '/../logs/request-debug.log', $debugLine2, FILE_APPEND | LOCK_EX);
 
-// Temporary debug: log raw request bodies for page create/update to help trace missing blocks
-// DISABLED: file_get_contents('php://input') can only be read once, this interferes with ApiLogger
-// if (preg_match('#^/api/pages#', $uri) && in_array($method, ['POST', 'PUT'])) {
-//     $raw = file_get_contents('php://input');
-//     $debugFile = __DIR__ . '/../logs/request-bodies.log';
-//     $entry = json_encode([
-//         'timestamp' => date('c'),
-//         'method' => $method,
-//         'uri' => $uri,
-//         'raw' => $raw
-//     ]) . PHP_EOL;
-//     @file_put_contents($debugFile, $entry, FILE_APPEND | LOCK_EX);
-// }
-
-// CSP Violation Reporting Endpoint (PHASE 2)
-if ($method === 'POST' && $uri === '/api/csp-report') {
-    $controller = new \Presentation\Controller\CspReportController();
-    $controller->report();
-    exit;
+// Extra debug for media uploads
+if (strpos($uri, 'media') !== false) {
+    file_put_contents(__DIR__ . '/../logs/routing.log', date('c') . " | Found 'media' in uri: " . $uri . " | METHOD=" . $method . "\n", FILE_APPEND);
 }
+
+// Temporary debug: log raw request bodies for page create/update to help trace missing blocks
 
 // Простой роутер
 try {
@@ -207,6 +193,7 @@ try {
         $controller->index();
     }
     elseif (preg_match('#^/api/media/upload$#', $uri) && $method === 'POST') {
+        file_put_contents(__DIR__ . '/../logs/routing.log', date('c') . " | Matched /api/media/upload POST\n", FILE_APPEND);
         $controller = new \Presentation\Controller\MediaController();
         $controller->upload();
     }

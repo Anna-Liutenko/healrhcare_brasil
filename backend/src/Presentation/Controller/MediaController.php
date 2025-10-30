@@ -61,7 +61,7 @@ class MediaController
     public function upload(): void
     {
         $startTime = ApiLogger::logRequest();
-
+        
         try {
 
             // Check if file was uploaded
@@ -78,15 +78,15 @@ class MediaController
 
             $mediaFile = $useCase->execute($_FILES['file'], $uploadedBy);
 
-            $response = [
-                'success' => true,
-                'file_id' => $mediaFile->getId(),
-                'file_url' => $mediaFile->getUrl(),
-                'filename' => $mediaFile->getFilename(),
-                'type' => $mediaFile->getType(),
-                'size' => $mediaFile->getSize(),
-                'human_size' => $mediaFile->getHumanReadableSize()
-            ];
+            $mediaData = EntityToArrayTransformer::mediaFileToArray($mediaFile);
+            
+            $response = array_merge(
+                [
+                    'success' => true,
+                ],
+                $mediaData
+            );
+            
             ApiLogger::logResponse(201, $response, $startTime);
             $this->jsonResponse($response, 201);
 
