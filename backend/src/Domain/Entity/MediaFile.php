@@ -13,9 +13,14 @@ class MediaFile
 {
     private string $id;
     private string $filename;
+    private string $originalFilename;
     private string $url;
     private string $type; // 'image' | 'svg' | 'document'
+    private string $mimeType;
     private int $size; // bytes
+    private ?int $width; // pixels, null for non-images
+    private ?int $height; // pixels, null for non-images
+    private ?string $altText; // optional description
     private string $uploadedBy; // user ID
     private DateTime $uploadedAt;
 
@@ -26,13 +31,23 @@ class MediaFile
         string $type,
         int $size,
         string $uploadedBy,
-        ?DateTime $uploadedAt = null
+        ?DateTime $uploadedAt = null,
+        string $originalFilename = '',
+        string $mimeType = 'application/octet-stream',
+        ?int $width = null,
+        ?int $height = null,
+        ?string $altText = null
     ) {
         $this->id = $id;
         $this->filename = $filename;
+        $this->originalFilename = $originalFilename ?: $filename;
         $this->url = $url;
         $this->type = $type;
+        $this->mimeType = $mimeType;
         $this->size = $size;
+        $this->width = $width;
+        $this->height = $height;
+        $this->altText = $altText;
         $this->uploadedBy = $uploadedBy;
         $this->uploadedAt = $uploadedAt ?? new DateTime();
     }
@@ -41,9 +56,14 @@ class MediaFile
 
     public function getId(): string { return $this->id; }
     public function getFilename(): string { return $this->filename; }
+    public function getOriginalFilename(): string { return $this->originalFilename; }
     public function getUrl(): string { return $this->url; }
     public function getType(): string { return $this->type; }
+    public function getMimeType(): string { return $this->mimeType; }
     public function getSize(): int { return $this->size; }
+    public function getWidth(): ?int { return $this->width; }
+    public function getHeight(): ?int { return $this->height; }
+    public function getAltText(): ?string { return $this->altText; }
     public function getUploadedBy(): string { return $this->uploadedBy; }
     public function getUploadedAt(): DateTime { return $this->uploadedAt; }
 

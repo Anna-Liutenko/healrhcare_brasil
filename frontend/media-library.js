@@ -104,9 +104,24 @@ const MediaLibraryApp = {
 
             try {
                 // Load only image files by default
-                this.mediaFiles = await this.apiClient.getMedia('image');
-                this.applyFilters();
-                console.log('Loaded media files:', this.mediaFiles);
+                    const raw = await this.apiClient.getMedia('image');
+
+                    // Normalize API response to frontend shape
+                    // Backend returns fields like file_id, file_url, uploaded_at, etc.
+                    this.mediaFiles = (Array.isArray(raw) ? raw : []).map(item => ({
+                        id: item.file_id || item.id || item.fileId || item.mediaId || null,
+                        filename: item.filename || item.original_filename || item.name || '',
+                        url: item.file_url || item.url || item.path || '',
+                        type: item.type || 'image',
+                        size: item.size || null,
+                        human_size: item.human_size || item.humanSize || null,
+                        uploaded_at: item.uploaded_at || item.uploadedAt || new Date().toISOString(),
+                        // keep original raw item for debugging if needed
+                        _raw: item
+                    }));
+
+                    this.applyFilters();
+                    console.log('Loaded media files:', this.mediaFiles);
             } catch (error) {
                 this.error = error.message;
                 console.error('Failed to load media:', error);

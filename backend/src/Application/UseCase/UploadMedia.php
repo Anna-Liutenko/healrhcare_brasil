@@ -53,8 +53,11 @@ class UploadMedia
             throw new InvalidArgumentException('File size exceeds maximum limit of 10MB');
         }
 
-        // Detect file type
+        // Detect MIME type and file type
         $mimeType = mime_content_type($file['tmp_name']);
+        if ($mimeType === false) {
+            $mimeType = 'application/octet-stream';
+        }
         $type = $this->detectFileType($mimeType);
 
         // Validate file type
@@ -73,17 +76,34 @@ class UploadMedia
             throw new InvalidArgumentException('Failed to move uploaded file');
         }
 
+        // Extract image dimensions for image/svg types
+        $width = null;
+        $height = null;
+        if ($type === 'image' || $type === 'svg') {
+            $imageInfo = @getimagesize($filepath);
+            if ($imageInfo !== false) {
+                $width = (int) $imageInfo[0];
+                $height = (int) $imageInfo[1];
+            }
+        }
+
         // Generate URL
         $url = '/uploads/' . $uniqueFilename;
 
-        // Create MediaFile entity
+        // Create MediaFile entity with all metadata using positional parameters
         $mediaFile = new MediaFile(
-            id: Uuid::uuid4()->toString(),
-            filename: $file['name'],
-            url: $url,
-            type: $type,
-            size: $file['size'],
-            uploadedBy: $uploadedBy
+            Uuid::uuid4()->toString(),              // id
+            $uniqueFilename,                        // filename
+            $url,                                   // url
+            $type,                                  // type
+            $file['size'],                          // size
+            $uploadedBy,                            // uploadedBy
+            null,                                   // uploadedAt (use default)
+            $file['name'],                          // originalFilename
+            $mimeType,                              // mimeType
+            $width,                                 // width
+            $height,                                // height
+            null                                    // altText
         );
 
         // Save to database

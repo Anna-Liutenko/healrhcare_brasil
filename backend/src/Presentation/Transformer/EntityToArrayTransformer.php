@@ -97,13 +97,19 @@ class EntityToArrayTransformer
     public static function mediaFileToArray(MediaFile $file): array
     {
         return [
-            'id' => $file->getId(),
+            'file_id' => $file->getId(),
             'filename' => $file->getFilename(),
-            'url' => $file->getUrl(),
+            'original_filename' => $file->getOriginalFilename(),
+            'file_url' => $file->getUrl(),
             'type' => $file->getType(),
+            'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
-            'uploadedBy' => $file->getUploadedBy(),  // ✅ camelCase!
-            'uploadedAt' => $file->getUploadedAt()->format('Y-m-d H:i:s'),  // ✅ camelCase!
+            'human_size' => $file->getHumanReadableSize(),
+            'width' => $file->getWidth(),
+            'height' => $file->getHeight(),
+            'alt_text' => $file->getAltText(),
+            'uploaded_by' => $file->getUploadedBy(),
+            'uploaded_at' => $file->getUploadedAt()->format('Y-m-d H:i:s'),
         ];
     }
 }
