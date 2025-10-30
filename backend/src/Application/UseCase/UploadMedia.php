@@ -79,7 +79,8 @@ class UploadMedia
         // Create MediaFile entity
         $mediaFile = new MediaFile(
             id: Uuid::uuid4()->toString(),
-            filename: $file['name'],
+            filename: $uniqueFilename,
+            originalFilename: $file['name'],
             url: $url,
             type: $type,
             size: $file['size'],

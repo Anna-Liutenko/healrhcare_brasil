@@ -56,17 +56,19 @@ class MySQLMediaRepository implements MediaRepositoryInterface
     {
         $stmt = $this->db->prepare('
             INSERT INTO media (
-                id, filename, url, type, size, uploaded_by, uploaded_at
+                id, filename, original_filename, url, type, mime_type, size, uploaded_by, uploaded_at
             ) VALUES (
-                :id, :filename, :url, :type, :size, :uploaded_by, :uploaded_at
+                :id, :filename, :original_filename, :url, :type, :mime_type, :size, :uploaded_by, :uploaded_at
             )
         ');
 
         $stmt->execute([
             'id' => $mediaFile->getId(),
             'filename' => $mediaFile->getFilename(),
+            'original_filename' => $mediaFile->getOriginalFilename(),
             'url' => $mediaFile->getUrl(),
             'type' => $mediaFile->getType(),
+            'mime_type' => 'application/octet-stream', // TODO: detect from file
             'size' => $mediaFile->getSize(),
             'uploaded_by' => $mediaFile->getUploadedBy(),
             'uploaded_at' => $mediaFile->getUploadedAt()->format('Y-m-d H:i:s')
@@ -84,6 +86,7 @@ class MySQLMediaRepository implements MediaRepositoryInterface
         return new MediaFile(
             id: $row['id'],
             filename: $row['filename'],
+            originalFilename: $row['original_filename'],
             url: $row['url'],
             type: $row['type'],
             size: (int) $row['size'],

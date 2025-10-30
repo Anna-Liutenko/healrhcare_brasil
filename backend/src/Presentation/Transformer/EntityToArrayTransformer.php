@@ -99,6 +99,7 @@ class EntityToArrayTransformer
         return [
             'id' => $file->getId(),
             'filename' => $file->getFilename(),
+            'originalFilename' => $file->getOriginalFilename(),
             'url' => $file->getUrl(),
             'type' => $file->getType(),
             'size' => $file->getSize(),

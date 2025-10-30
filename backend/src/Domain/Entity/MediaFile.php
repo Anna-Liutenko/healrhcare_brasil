@@ -13,6 +13,7 @@ class MediaFile
 {
     private string $id;
     private string $filename;
+    private string $originalFilename;
     private string $url;
     private string $type; // 'image' | 'svg' | 'document'
     private int $size; // bytes
@@ -22,6 +23,7 @@ class MediaFile
     public function __construct(
         string $id,
         string $filename,
+        string $originalFilename,
         string $url,
         string $type,
         int $size,
@@ -30,6 +32,7 @@ class MediaFile
     ) {
         $this->id = $id;
         $this->filename = $filename;
+        $this->originalFilename = $originalFilename;
         $this->url = $url;
         $this->type = $type;
         $this->size = $size;
@@ -41,6 +44,7 @@ class MediaFile
 
     public function getId(): string { return $this->id; }
     public function getFilename(): string { return $this->filename; }
+    public function getOriginalFilename(): string { return $this->originalFilename; }
     public function getUrl(): string { return $this->url; }
     public function getType(): string { return $this->type; }
     public function getSize(): int { return $this->size; }
