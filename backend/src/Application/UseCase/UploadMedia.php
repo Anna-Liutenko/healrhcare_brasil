@@ -53,8 +53,12 @@ class UploadMedia
             throw new InvalidArgumentException('File size exceeds maximum limit of 10MB');
         }
 
-        // Detect file type
+        // Detect MIME type with safe fallback
         $mimeType = mime_content_type($file['tmp_name']);
+        if ($mimeType === false) {
+            // fallback when detection fails
+            $mimeType = 'application/octet-stream';
+        }
         $type = $this->detectFileType($mimeType);
 
         // Validate file type
@@ -76,7 +80,20 @@ class UploadMedia
         // Generate URL
         $url = '/uploads/' . $uniqueFilename;
 
-        // Create MediaFile entity
+        // Extract image dimensions for image/svg types (best-effort)
+        $width = null;
+        $height = null;
+        if ($type === 'image' || $type === 'svg') {
+            $imageInfo = @getimagesize($filepath);
+            if ($imageInfo !== false) {
+                $width = (int) $imageInfo[0];
+                $height = (int) $imageInfo[1];
+            }
+        }
+
+        // Create MediaFile entity (keep named args for minimal-risk change)
+        // Note: additional metadata (mimeType, width, height) may be persisted by repository
+        // if the MediaFile supports them. We keep named args to avoid positional-arg risks.
         $mediaFile = new MediaFile(
             id: Uuid::uuid4()->toString(),
             filename: $uniqueFilename,
@@ -86,6 +103,17 @@ class UploadMedia
             size: $file['size'],
             uploadedBy: $uploadedBy
         );
+
+        // If the MediaFile entity exposes setters, attach extra metadata to the entity (best-effort)
+        if (method_exists($mediaFile, 'setMimeType')) {
+            $mediaFile->setMimeType($mimeType);
+        }
+        if ($width !== null && method_exists($mediaFile, 'setWidth')) {
+            $mediaFile->setWidth($width);
+        }
+        if ($height !== null && method_exists($mediaFile, 'setHeight')) {
+            $mediaFile->setHeight($height);
+        }
 
         // Save to database
         $this->mediaRepository->save($mediaFile);

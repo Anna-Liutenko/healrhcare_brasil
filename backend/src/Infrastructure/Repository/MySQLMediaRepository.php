@@ -62,13 +62,19 @@ class MySQLMediaRepository implements MediaRepositoryInterface
             )
         ');
 
+        // Prefer MIME from entity when available (best-effort). Fall back to octet-stream.
+        $mime = 'application/octet-stream';
+        if (method_exists($mediaFile, 'getMimeType')) {
+            $mime = $mediaFile->getMimeType() ?? $mime;
+        }
+
         $stmt->execute([
             'id' => $mediaFile->getId(),
             'filename' => $mediaFile->getFilename(),
             'original_filename' => $mediaFile->getOriginalFilename(),
             'url' => $mediaFile->getUrl(),
             'type' => $mediaFile->getType(),
-            'mime_type' => 'application/octet-stream', // TODO: detect from file
+            'mime_type' => $mime,
             'size' => $mediaFile->getSize(),
             'uploaded_by' => $mediaFile->getUploadedBy(),
             'uploaded_at' => $mediaFile->getUploadedAt()->format('Y-m-d H:i:s')
