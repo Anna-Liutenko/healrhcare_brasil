@@ -56,9 +56,9 @@ class MySQLMediaRepository implements MediaRepositoryInterface
     {
         $stmt = $this->db->prepare('
             INSERT INTO media (
-                id, filename, original_filename, url, type, mime_type, size, uploaded_by, uploaded_at
+                id, filename, original_filename, url, type, mime_type, size, width, height, uploaded_by, uploaded_at
             ) VALUES (
-                :id, :filename, :original_filename, :url, :type, :mime_type, :size, :uploaded_by, :uploaded_at
+                :id, :filename, :original_filename, :url, :type, :mime_type, :size, :width, :height, :uploaded_by, :uploaded_at
             )
         ');
 
@@ -66,6 +66,15 @@ class MySQLMediaRepository implements MediaRepositoryInterface
         $mime = 'application/octet-stream';
         if (method_exists($mediaFile, 'getMimeType')) {
             $mime = $mediaFile->getMimeType() ?? $mime;
+        }
+
+        $width = null;
+        $height = null;
+        if (method_exists($mediaFile, 'getWidth')) {
+            $width = $mediaFile->getWidth();
+        }
+        if (method_exists($mediaFile, 'getHeight')) {
+            $height = $mediaFile->getHeight();
         }
 
         $stmt->execute([
@@ -76,6 +85,8 @@ class MySQLMediaRepository implements MediaRepositoryInterface
             'type' => $mediaFile->getType(),
             'mime_type' => $mime,
             'size' => $mediaFile->getSize(),
+            'width' => $width,
+            'height' => $height,
             'uploaded_by' => $mediaFile->getUploadedBy(),
             'uploaded_at' => $mediaFile->getUploadedAt()->format('Y-m-d H:i:s')
         ]);
@@ -89,7 +100,7 @@ class MySQLMediaRepository implements MediaRepositoryInterface
 
     private function hydrate(array $row): MediaFile
     {
-        return new MediaFile(
+        $media = new MediaFile(
             id: $row['id'],
             filename: $row['filename'],
             originalFilename: $row['original_filename'],
@@ -99,5 +110,18 @@ class MySQLMediaRepository implements MediaRepositoryInterface
             uploadedBy: $row['uploaded_by'],
             uploadedAt: new DateTime($row['uploaded_at'])
         );
+
+        // Attach optional metadata if available
+        if (isset($row['mime_type']) && method_exists($media, 'setMimeType')) {
+            $media->setMimeType($row['mime_type']);
+        }
+        if (isset($row['width']) && $row['width'] !== null && method_exists($media, 'setWidth')) {
+            $media->setWidth((int) $row['width']);
+        }
+        if (isset($row['height']) && $row['height'] !== null && method_exists($media, 'setHeight')) {
+            $media->setHeight((int) $row['height']);
+        }
+
+        return $media;
     }
 }

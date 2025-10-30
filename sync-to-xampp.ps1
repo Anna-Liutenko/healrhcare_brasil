@@ -23,9 +23,9 @@ function Sync-Files {
         [string]$Description
     )
 
-    Write-Host "📁 $Description" -ForegroundColor Yellow
+    Write-Host "[SYNC] $Description" -ForegroundColor Yellow
     Write-Host "   From: $Source" -ForegroundColor Gray
-    Write-Host "   To:  $Destination" -ForegroundColor Gray
+    Write-Host "   To:   $Destination" -ForegroundColor Gray
 
     if (-not (Test-Path $Source)) {
         Write-Host "   ❌ ERROR: Source folder not found!" -ForegroundColor Red
@@ -33,7 +33,7 @@ function Sync-Files {
     }
 
     if (-not (Test-Path $Destination)) {
-        Write-Host "   ⚠️  Target folder does not exist, creating..." -ForegroundColor Yellow
+        Write-Host "   [WARN] Target folder does not exist, creating..." -ForegroundColor Yellow
         New-Item -Path $Destination -ItemType Directory -Force | Out-Null
     }
 
@@ -42,10 +42,10 @@ function Sync-Files {
         robocopy "$Source" "$Destination" /MIR /R:3 /W:1 /NP /NDL /NFL /NJH /NJS | Out-Null
 
         if ($LASTEXITCODE -le 7) {
-            Write-Host "   ✅ Синхронизировано успешно" -ForegroundColor Green
+            Write-Host "   [OK] Synchronized successfully" -ForegroundColor Green
             return $true
         } else {
-            Write-Host "   ❌ ОШИБКА при копировании (код: $LASTEXITCODE)" -ForegroundColor Red
+            Write-Host "   [ERROR] Copy failed (code: $LASTEXITCODE)" -ForegroundColor Red
             return $false
         }
     } catch {
@@ -69,18 +69,18 @@ Write-Host "RESULT" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 
 if ($backendOk -and $frontendOk) {
-    Write-Host "✅ All files synchronized successfully!" -ForegroundColor Green
+    Write-Host "[OK] All files synchronized successfully!" -ForegroundColor Green
     Write-Host ""
     Write-Host "Now you can:" -ForegroundColor Yellow
-    Write-Host "  • Open http://localhost/visual-editor-standalone/" -ForegroundColor Gray
-    Write-Host "  • Refresh page in browser (Ctrl+Shift+R)" -ForegroundColor Gray
+    Write-Host "  - Open http://localhost/visual-editor-standalone/" -ForegroundColor Gray
+    Write-Host "  - Refresh page in browser (Ctrl+Shift+R)" -ForegroundColor Gray
 } else {
-    Write-Host "⚠️  Synchronization completed with errors" -ForegroundColor Yellow
+    Write-Host "[WARN] Synchronization completed with errors" -ForegroundColor Yellow
     if (-not $backendOk) {
-        Write-Host "  ❌ Backend not synchronized" -ForegroundColor Red
+        Write-Host "  [ERROR] Backend not synchronized" -ForegroundColor Red
     }
     if (-not $frontendOk) {
-        Write-Host "  ❌ Frontend not synchronized" -ForegroundColor Red
+        Write-Host "  [ERROR] Frontend not synchronized" -ForegroundColor Red
     }
 }
 

@@ -19,6 +19,10 @@ class MediaFile
     private int $size; // bytes
     private string $uploadedBy; // user ID
     private DateTime $uploadedAt;
+    // Optional metadata
+    private ?string $mimeType = null;
+    private ?int $width = null;
+    private ?int $height = null;
 
     public function __construct(
         string $id,
@@ -50,6 +54,15 @@ class MediaFile
     public function getSize(): int { return $this->size; }
     public function getUploadedBy(): string { return $this->uploadedBy; }
     public function getUploadedAt(): DateTime { return $this->uploadedAt; }
+
+    // Optional metadata accessors
+    public function getMimeType(): ?string { return $this->mimeType; }
+    public function getWidth(): ?int { return $this->width; }
+    public function getHeight(): ?int { return $this->height; }
+
+    public function setMimeType(string $mimeType): void { $this->mimeType = $mimeType; }
+    public function setWidth(int $width): void { $this->width = $width; }
+    public function setHeight(int $height): void { $this->height = $height; }
 
     // ===== BUSINESS LOGIC =====
 
