@@ -10,11 +10,19 @@
 | 002 | `002_create_sessions_table.sql` | Таблица сессий (авторизация) |
 | 003 | `003_create_pages_table.sql` | Таблица страниц (главная сущность) |
 | 004 | `004_create_blocks_table.sql` | Таблица блоков контента |
-| 005 | `005_create_media_table.sql` | Таблица медиафайлов (галерея) |
-| 006 | `006_create_menus_table.sql` | Таблица меню навигации |
-| 007 | `007_create_menu_items_table.sql` | Таблица пунктов меню |
-| 008 | `008_create_settings_table.sql` | Глобальные настройки сайта |
-| 009 | `009_create_tags_table.sql` | Теги для контента |
+| 005 | `005_add_source_template_to_pages.sql` | Колонка `source_template_slug` для страниц |
+| 006 | `005_create_media_table.sql` | Таблица медиафайлов (галерея) |
+| 007 | `006_create_menus_table.sql` | Таблица меню навигации |
+| 008 | `007_create_menu_items_table.sql` | Таблица пунктов меню |
+| 009 | `008_create_settings_table.sql` | Глобальные настройки сайта |
+| 010 | `009_create_tags_table.sql` | Теги для контента |
+| 011 | `010_add_inline_editing_fields.sql` | Поля для inline-редактирования страниц |
+| 012 | `011_add_menu_fields_to_pages.sql` | Поля меню для страниц |
+| 013 | `2025_10_13_add_rendered_html_and_menu_title.sql` | Колонки `rendered_html` и `menu_title` |
+| 014 | `2025_10_16_add_client_id_to_blocks.sql` | Колонка `client_id` для блоков |
+| 015 | `20251019_add_csrf_token_to_sessions.sql` | Колонка `csrf_token` для сессий |
+| 016 | `20251030_add_pages_columns.sql` | Гарантия наличия колонок в `pages` |
+| 017 | `20251030_add_card_image_column.sql` | Колонка `card_image` для страниц |
 
 ---
 
@@ -32,15 +40,23 @@
    ```sql
    CREATE DATABASE IF NOT EXISTS healthcare_cms CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
    USE healthcare_cms;
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/001_create_users_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/002_create_sessions_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/003_create_pages_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/004_create_blocks_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/005_create_media_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/006_create_menus_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/007_create_menu_items_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/008_create_settings_table.sql";
-   SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/009_create_tags_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/001_create_users_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/002_create_sessions_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/003_create_pages_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/004_create_blocks_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/005_add_source_template_to_pages.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/005_create_media_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/006_create_menus_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/007_create_menu_items_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/008_create_settings_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/009_create_tags_table.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/010_add_inline_editing_fields.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/011_add_menu_fields_to_pages.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/2025_10_13_add_rendered_html_and_menu_title.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/2025_10_16_add_client_id_to_blocks.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/20251019_add_csrf_token_to_sessions.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/20251030_add_pages_columns.sql";
+  SOURCE "C:/Users/annal/Documents/Мои сайты/Сайт о здравоохранении в Бразилии/Разработка сайта с CMS/database/migrations/20251030_add_card_image_column.sql";
    ```
 
 ### **Вариант 2: Один скрипт (проще)**
@@ -56,6 +72,14 @@ cd "C:\Users\annal\Documents\Мои сайты\Сайт о здравоохра�
 cd /var/www/healthcare-cms/database/migrations
 mysql -u healthcare_user -p healthcare_cms < run_migrations.sql
 ```
+
+### **Вариант 4: PHP-скрипт (MySQL + SQLite)**
+
+```bash
+php backend/tools/apply_schema_updates.php
+```
+
+Скрипт проверит наличие ключевых колонок (`card_image`, `rendered_html`, `menu_title`, `source_template_slug`) в таблице `pages` и автоматически добавит их как в MySQL, так и в тестовой SQLite-базе. Индекс `idx_source_template` также создаётся при необходимости.
 
 ---
 
