@@ -89,18 +89,18 @@ class MySQLMediaRepository implements MediaRepositoryInterface
     private function hydrate(array $row): MediaFile
     {
         return new MediaFile(
-            id: $row['id'],
-            filename: $row['filename'],
-            url: $row['url'],
-            type: $row['type'],
-            size: (int) $row['size'],
-            uploadedBy: $row['uploaded_by'],
-            uploadedAt: new DateTime($row['uploaded_at']),
-            originalFilename: $row['original_filename'],
-            mimeType: $row['mime_type'],
-            width: $row['width'] !== null ? (int) $row['width'] : null,
-            height: $row['height'] !== null ? (int) $row['height'] : null,
-            altText: $row['alt_text']
+            $row['id'],
+            $row['filename'],
+            $row['url'],
+            $row['type'],
+            (int) $row['size'],
+            $row['uploaded_by'],
+            new DateTime($row['uploaded_at']),
+            $row['original_filename'],
+            $row['mime_type'],
+            $row['width'] !== null ? (int) $row['width'] : null,
+            $row['height'] !== null ? (int) $row['height'] : null,
+            $row['alt_text']
         );
     }
 }
