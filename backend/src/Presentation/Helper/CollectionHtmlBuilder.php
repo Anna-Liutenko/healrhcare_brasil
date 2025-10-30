@@ -70,7 +70,11 @@ class CollectionHtmlBuilder
         $html .= '</body>' . PHP_EOL;
         $html .= '</html>' . PHP_EOL;
 
-        return $html;
+    // Debug: write built HTML to a log file so we can compare builder output
+    // with what the PublicPageController actually serves (helps find path corruption).
+    @file_put_contents(__DIR__ . '/../../../logs/collection-html-built.html', $html);
+
+    return $html;
     }
 
     /**
