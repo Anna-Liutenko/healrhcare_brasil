@@ -3,8 +3,8 @@
 
 $ErrorActionPreference = "Stop"
 
-# Пути
-$sourceRoot = "C:\Users\annal\Documents\Мои сайты\Сайт о здравоохранении в Бразилии\Разработка сайта с CMS"
+# Пути - используем текущую директорию скрипта (PSScriptRoot) для совместимости с кириллицей
+$sourceRoot = $PSScriptRoot
 $backendSource = "$sourceRoot\backend"
 $frontendSource = "$sourceRoot\frontend"
 $backendTarget = "C:\xampp\htdocs\healthcare-cms-backend"
@@ -28,7 +28,7 @@ function Sync-Files {
     Write-Host "   To:   $Destination" -ForegroundColor Gray
 
     if (-not (Test-Path $Source)) {
-        Write-Host "   ❌ ERROR: Source folder not found!" -ForegroundColor Red
+        Write-Host "   [ERROR] Source folder not found!" -ForegroundColor Red
         return $false
     }
 
@@ -49,7 +49,7 @@ function Sync-Files {
             return $false
         }
     } catch {
-        Write-Host "   ❌ EXCEPTION: $_" -ForegroundColor Red
+        Write-Host "   [ERROR] EXCEPTION: $_" -ForegroundColor Red
         return $false
     }
 }
