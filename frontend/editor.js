@@ -1081,7 +1081,7 @@ const app = createApp({
 
             const cardsHtml = cards.map((card, idx) => `
                 <div class="service-card">
-                    <div class="icon">${this.escape(card.icon || '')}</div>
+                    <div class="icon">${card.icon || ''}</div>
                     <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${this.escape(card.title || '')}</h3>
                     <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${this.escape(card.text || '')}</p>
                 </div>
