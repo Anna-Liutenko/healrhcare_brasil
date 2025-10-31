@@ -61,3 +61,48 @@
 *   **HOWEVER, maintain balance.** Avoid over-engineering. If a task is simple (e.g., "add 1 field"), do not create 5 new files. Carefully augment existing files.
     
 *   **Priority:** Code simplicity, functionality
+
+* * *
+
+### 6\. Git Merge & Conflict Resolution
+
+**Source of Truth:**
+*   **ALWAYS use locally verified code as the source of truth during merge operations.**
+*   Local code has been tested on the local XAMPP server before commit and is guaranteed to be functional.
+*   GitHub code may contain experimental changes or incomplete implementations and should NOT be trusted during conflicts.
+
+**Merge Strategy:**
+1.  **Create integration branch** from `main` when merging multiple feature branches.
+2.  **Merge branches sequentially** to identify which branch causes conflicts.
+3.  **Use `--no-commit --no-ff` flag** to preview changes before finalizing the merge.
+4.  **Test locally** before committing the merge.
+
+**Conflict Resolution Rules:**
+1.  **Prefer local version (HEAD)** — it has been verified on the local server.
+2.  **Choose simplicity over complexity** — avoid adding extra features during conflict resolution.
+3.  **Maintain consistency** — use the same patterns as the rest of the codebase:
+    - Positional parameters with default values (not named arguments) for consistency
+    - Existing architecture patterns (no over-engineering)
+    - Established naming conventions (snake_case for DB/API, camelCase for internal code)
+4.  **Remove duplicate code** — conflicts often introduce duplicated properties/methods; clean them up.
+5.  **Document decisions** in the merge commit message explaining why each choice was made.
+
+**Example Conflict Resolution Pattern:**
+```
+If both branches add the same method:
+- Choose the simpler, shorter version
+- If quality differs, choose the better one but keep it simple
+- AVOID: combining both versions with extra checks (method_exists, etc.)
+- PREFER: single clean implementation that works
+
+If both branches modify constructor parameters:
+- Use positional parameters with defaults (project standard)
+- AVOID: switching between positional and named arguments
+- MAINTAIN: consistency with existing Entity classes
+```
+
+**After Merge:**
+1.  Run full test suite locally to verify no regressions
+2.  Deploy to local XAMPP to smoke test
+3.  Force-push to GitHub only after local verification
+4.  Use `--force-with-lease` instead of `--force` for safety
