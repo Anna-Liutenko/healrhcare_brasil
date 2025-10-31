@@ -1999,6 +1999,13 @@ const app = createApp({
             await this.loadGalleryImages();
         },
 
+        async openGalleryForCardImage() {
+            this.gallerySelectionMode = 'page-card-image';
+            this.selectedGalleryImage = null;
+            this.showGalleryModal = true;
+            await this.loadGalleryImages();
+        },
+
         async loadGalleryImages() {
             try {
                 const files = await this.apiClient.getMedia('image');
@@ -2026,6 +2033,17 @@ const app = createApp({
         confirmImageSelection() {
             if (!this.selectedGalleryImage) return;
             const imageUrl = this.selectedGalleryImage.displayUrl || this.selectedGalleryImage.url;
+
+            // Page card image mode -> set pageData.cardImage
+            if (this.gallerySelectionMode === 'page-card-image') {
+                const selectedValue = this.normalizeRelativeUrl(this.selectedGalleryImage.url);
+                this.pageData.cardImage = selectedValue;
+                this.showGalleryModal = false;
+                this.selectedGalleryImage = null;
+                this.gallerySelectionMode = null;
+                this.showNotification('Изображение для превью установлено', 'success');
+                return;
+            }
 
             // Collection card mode -> update via API
             if (this.gallerySelectionMode === 'collection-card') {
