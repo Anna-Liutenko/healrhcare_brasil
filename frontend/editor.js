@@ -32,6 +32,7 @@ const app = createApp({
                 cardImage: ''
             },
             autoGenerateSlug: true, // Флаг автогенерации slug
+            isInitializing: false, // ⭐ Флаг инициализации, блокирует watchers при загрузке данных
 
             // Menu / Navigation settings for the current page (editor-only model)
             pageSettings: {
@@ -653,35 +654,65 @@ const app = createApp({
 
             // Кастомный обработчик для загрузки изображений
             const imageHandler = () => {
+                if (!this.currentUser) {
+                    this.showNotification('Необходима авторизация для загрузки изображений', 'error');
+                    return;
+                }
+
                 const input = document.createElement('input');
-                input.setAttribute('type', 'file');
-                input.setAttribute('accept', 'image/*');
+                input.type = 'file';
+                input.accept = 'image/*';
                 input.click();
 
                 input.onchange = async () => {
-                    const file = input.files[0];
-                    if (!file) return;
+                    const file = input.files && input.files[0];
+                    if (!file) {
+                        return;
+                    }
 
-                    const formData = new FormData();
-                    formData.append('file', file);
+                    if (!file.type.startsWith('image/')) {
+                        this.showNotification('Выберите файл изображения', 'error');
+                        return;
+                    }
+
+                    const maxSize = 5 * 1024 * 1024;
+                    if (file.size > maxSize) {
+                        this.showNotification('Файл слишком большой (макс. 5MB)', 'error');
+                        return;
+                    }
+
+                    this.uploadProgress = 'Загрузка...';
 
                     try {
-                        const response = await fetch('upload.php', {
-                            method: 'POST',
-                            body: formData
+                        const result = await this.apiClient.uploadMedia(file, (progress) => {
+                            this.uploadProgress = `Загрузка: ${Math.round(progress)}%`;
                         });
 
-                        const data = await response.json();
-
-                        if (data.success && data.url) {
-                            const range = this.quillInstance.getSelection();
-                            this.quillInstance.insertEmbed(range.index, 'image', data.url);
-                        } else {
-                            this.showNotification('Ошибка загрузки изображения', 'error');
+                        const normalized = result ? this.normalizeMediaFile(result) : null;
+                        if (normalized && Array.isArray(this.galleryImages)) {
+                            this.galleryImages.unshift(normalized);
                         }
+
+                        const range = this.quillInstance.getSelection(true);
+                        const insertIndex = range ? range.index : this.quillInstance.getLength();
+                        const fallbackUrl = result ? this.buildMediaUrl(this.normalizeRelativeUrl(result.file_url || result.url || '')) : '';
+                        const imageUrl = normalized?.displayUrl || fallbackUrl;
+
+                        if (!imageUrl) {
+                            this.showNotification('Сервер не вернул URL загруженного изображения', 'error');
+                            return;
+                        }
+
+                        this.quillInstance.insertEmbed(insertIndex, 'image', imageUrl, Quill.sources.USER);
+                        this.quillInstance.setSelection(insertIndex + 1, 0, Quill.sources.SILENT);
+                        this.showNotification('✅ Изображение загружено', 'success');
                     } catch (error) {
                         console.error('Upload error:', error);
-                        this.showNotification('Ошибка загрузки изображения', 'error');
+                        const message = error?.message ? `Ошибка: ${error.message}` : 'Ошибка загрузки изображения';
+                        this.showNotification(message, 'error');
+                    } finally {
+                        this.uploadProgress = null;
+                        input.value = '';
                     }
                 };
             };
@@ -731,26 +762,22 @@ const app = createApp({
 
         setupImageDragAndDrop() {
             const editor = document.querySelector('.ql-editor');
-            if (!editor) return;
+            if (!editor || !this.quillInstance) return;
 
             let draggedImage = null;
             let startX = 0;
             let currentX = 0;
             let isDragging = false;
-            let dragTimer = null;
 
             // Делаем изображения draggable
             editor.addEventListener('mousedown', (e) => {
                 if (e.target.tagName === 'IMG') {
-                    // Очищаем предыдущий таймер если был
-                    if (dragTimer) clearTimeout(dragTimer);
-
                     draggedImage = e.target;
                     startX = e.clientX;
                     currentX = e.clientX;
                     isDragging = false;
 
-                    // Визуальный feedback - меняем курсор
+                    // Визуальный feedback
                     draggedImage.style.cursor = 'grabbing';
                     e.preventDefault();
                 }
@@ -762,74 +789,68 @@ const app = createApp({
                 currentX = e.clientX;
                 const deltaX = Math.abs(e.clientX - startX);
 
-                // Начинаем drag если сдвинули больше 10px по горизонтали
+                // Начинаем drag если сдвинули больше 10px
                 if (deltaX > 10 && !isDragging) {
                     isDragging = true;
-                    // Визуальный feedback - делаем картинку полупрозрачной
                     draggedImage.style.opacity = '0.5';
                     draggedImage.style.transform = 'scale(0.95)';
                 }
             });
 
             document.addEventListener('mouseup', (e) => {
-                if (!draggedImage) return;
+                if (!draggedImage || !isDragging) {
+                    if (draggedImage) {
+                        draggedImage.style.opacity = '1';
+                        draggedImage.style.transform = '';
+                        draggedImage.style.cursor = 'move';
+                    }
+                    draggedImage = null;
+                    return;
+                }
 
-                if (isDragging) {
-                    const editorRect = editor.getBoundingClientRect();
-                    const editorWidth = editorRect.width;
-                    const mouseX = currentX - editorRect.left;
+                const editorRect = editor.getBoundingClientRect();
+                const editorWidth = editorRect.width;
+                // Use the mouseup event clientX to ensure we always have the final position
+                const mouseX = (typeof e.clientX === 'number') ? (e.clientX - editorRect.left) : (currentX - editorRect.left);
 
-                    // Определяем позицию по трети ширины редактора
-                    const leftThird = editorWidth / 3;
-                    const rightThird = editorWidth * 2 / 3;
+                // Three zones: left, center, right
+                const leftThird = editorWidth / 3;
+                const rightThird = editorWidth * 2 / 3;
 
-                    // Сохраняем текущую ширину картинки
-                    const currentWidth = draggedImage.style.width || '';
-                    const currentMaxWidth = draggedImage.style.maxWidth || '';
+                // Consistent small margins for text wrap
+                const wrapMarginPx = 10; // 10px as required
 
-                    // Убираем все стили позиционирования
-                    draggedImage.style.float = '';
+                // Apply inline styles directly to the image DOM element (bypass Quill format system)
+                if (mouseX < leftThird) {
+                    // Left float
+                    draggedImage.style.float = 'left';
+                    draggedImage.style.margin = `0 ${wrapMarginPx}px ${wrapMarginPx}px 0`;
+                    draggedImage.style.display = '';
                     draggedImage.style.marginLeft = '';
                     draggedImage.style.marginRight = '';
-                    draggedImage.style.marginTop = '';
-                    draggedImage.style.marginBottom = '';
+                    this.showNotification('Изображение слева', 'success');
+                } else if (mouseX > rightThird) {
+                    // Right float
+                    draggedImage.style.float = 'right';
+                    draggedImage.style.margin = `0 0 ${wrapMarginPx}px ${wrapMarginPx}px`;
                     draggedImage.style.display = '';
-
-                    if (mouseX < leftThird) {
-                        // Слева
-                        draggedImage.style.float = 'left';
-                        draggedImage.style.marginRight = '2rem';
-                        draggedImage.style.marginBottom = '1.5rem';
-                        draggedImage.style.marginTop = '0.5rem';
-                        this.showNotification('Изображение слева', 'success');
-                    } else if (mouseX > rightThird) {
-                        // Справа
-                        draggedImage.style.float = 'right';
-                        draggedImage.style.marginLeft = '2rem';
-                        draggedImage.style.marginBottom = '1.5rem';
-                        draggedImage.style.marginTop = '0.5rem';
-                        this.showNotification('Изображение справа', 'success');
-                    } else {
-                        // По центру
-                        draggedImage.style.display = 'block';
-                        draggedImage.style.marginLeft = 'auto';
-                        draggedImage.style.marginRight = 'auto';
-                        draggedImage.style.marginTop = '2rem';
-                        draggedImage.style.marginBottom = '2rem';
-                        this.showNotification('Изображение по центру', 'success');
-                    }
-
-                    // Восстанавливаем ширину картинки
-                    if (currentWidth) draggedImage.style.width = currentWidth;
-                    if (currentMaxWidth) draggedImage.style.maxWidth = currentMaxWidth;
+                    draggedImage.style.marginLeft = '';
+                    draggedImage.style.marginRight = '';
+                    this.showNotification('Изображение справа', 'success');
+                } else {
+                    // Center: remove float so image behaves as block and text flows below
+                    draggedImage.style.float = 'none';
+                    draggedImage.style.display = 'block';
+                    draggedImage.style.margin = `${wrapMarginPx}px auto`;
+                    draggedImage.style.marginLeft = 'auto';
+                    draggedImage.style.marginRight = 'auto';
+                    this.showNotification('Изображение по центру', 'success');
                 }
 
                 // Восстанавливаем внешний вид
-                if (draggedImage) {
-                    draggedImage.style.opacity = '1';
-                    draggedImage.style.transform = '';
-                    draggedImage.style.cursor = 'move';
-                }
+                draggedImage.style.opacity = '1';
+                draggedImage.style.transform = '';
+                draggedImage.style.cursor = 'move';
 
                 draggedImage = null;
                 isDragging = false;
@@ -1399,6 +1420,13 @@ const app = createApp({
         },
 
         async loadPageFromAPI(pageId) {
+            // ⭐ CRITICAL: Set initialization flag to prevent watchers from triggering
+            this.isInitializing = true;
+            
+            // ⭐ CRITICAL: Disable auto-slug-generation IMMEDIATELY when loading any page
+            // This prevents watchers from triggering during data load and overwriting the saved slug
+            this.autoGenerateSlug = false;
+
             if (!this.currentUser) {
                 this.showNotification('Необходима авторизация', 'error');
                 this.debugMsg('Попытка загрузить страницу без авторизации', 'error', { pageId });
@@ -1445,7 +1473,6 @@ const app = createApp({
 
                 this.currentPageId = pagePayload.id || pageId;
                 this.isEditMode = true;
-                this.autoGenerateSlug = false; // Отключаем автогенерацию при загрузке существующей страницы
 
                 // If this is a collection page, load collection items
                 if (this.pageData.type === 'collection') {
@@ -1458,6 +1485,9 @@ const app = createApp({
                 console.error('Error loading page:', error);
                 this.showNotification('Ошибка загрузки: ' + error.message, 'error');
                 this.debugMsg('Ошибка загрузки страницы', 'error', { pageId, message: error.message, details: error.details || null });
+            } finally {
+                // ⭐ CRITICAL: Clear initialization flag to allow watchers after page data is loaded
+                this.isInitializing = false;
             }
         },
 
@@ -1842,6 +1872,10 @@ const app = createApp({
         },
 
         onTitleChange() {
+            // ⭐ CRITICAL: Do NOT auto-generate slug while initializing page data
+            // This prevents overwriting the saved slug during initial load
+            if (this.isInitializing) return;
+
             // Автогенерация slug при изменении названия
             // Генерируем только если автогенерация включена
             if (this.pageData.title && this.autoGenerateSlug) {
@@ -1964,6 +1998,16 @@ const app = createApp({
             html += `
 </body>
 </html>`;
+
+            // Преобразуем относительные пути /uploads/... в абсолютные URL для корректного отображения вне XAMPP
+            const baseUrl = window.location.origin;
+            html = html.replace(
+                /src="(\/uploads\/[^"]+)"/g,
+                (match, path) => {
+                    const absoluteUrl = baseUrl + path;
+                    return `src="${this.escape(absoluteUrl)}"`;
+                }
+            );
 
             // Download HTML file
             const blob = new Blob([html], { type: 'text/html' });

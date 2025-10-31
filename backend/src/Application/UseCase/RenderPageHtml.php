@@ -404,12 +404,20 @@ HTML;
 
         $titleHtml = $title ? "<h2>$title</h2>" : '';
 
+        // For article containerStyle, content is already Quill HTML (sanitized) - output as-is
+        // For normal containerStyle, wrap in <p> tags
+        if ($containerStyle === 'article') {
+            $contentHtml = $content;
+        } else {
+            $contentHtml = "<p>$content</p>";
+        }
+
         return <<<HTML
                 <section class="article-block">
                     <div class="$containerClass">
                         <div class="article-content $alignClass">
                             $titleHtml
-                            <p>$content</p>
+                            $contentHtml
                         </div>
                     </div>
                 </section>
