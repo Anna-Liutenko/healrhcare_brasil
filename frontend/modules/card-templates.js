@@ -34,6 +34,7 @@
 
     /**
      * Санитизация URL - защита от javascript: и data: схем
+     * Также преобразует /uploads/... в полный путь для публичной стороны
      */
     function sanitizeImageUrl(url) {
         url = String(url || '');
@@ -46,6 +47,13 @@
         // URL должен начинаться с / или https://
         if (!/^(\/|https:\/\/)/i.test(url)) {
             return '/healthcare-cms-frontend/uploads/default-card.svg';
+        }
+        
+        // Преобразовать /uploads/... в полный путь для публичной стороны
+        // На публичной странице браузер находится в /healthcare-cms-backend/public/p/...
+        // поэтому /uploads/ нужно преобразовать в /healthcare-cms-backend/public/uploads/
+        if (url.startsWith('/uploads/')) {
+            url = '/healthcare-cms-backend/public' + url;
         }
         
         return escapeHtml(url);

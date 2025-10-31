@@ -2048,7 +2048,8 @@ const app = createApp({
             // Collection card mode -> update via API
             if (this.gallerySelectionMode === 'collection-card') {
                 if (this.currentCollectionItemId) {
-                    this.updateCardImage(this.currentCollectionItemId, imageUrl);
+                    const relativeUrl = this.normalizeRelativeUrl(this.selectedGalleryImage.url);
+                    this.updateCardImage(this.currentCollectionItemId, relativeUrl);
                 }
                 this.currentCollectionItemId = null;
                 this.showGalleryModal = false;

@@ -64,6 +64,10 @@
             if (!/^(\/|https:\/\/)/i.test(url)) {
                 return '/healthcare-cms-frontend/uploads/default-card.svg';
             }
+            // Преобразовать /uploads/... в полный путь для публичной стороны
+            if (url.startsWith('/uploads/')) {
+                url = '/healthcare-cms-backend/public' + url;
+            }
             return escapeHtml(url);
         };
 
