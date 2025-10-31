@@ -106,3 +106,34 @@ If both branches modify constructor parameters:
 2.  Deploy to local XAMPP to smoke test
 3.  Force-push to GitHub only after local verification
 4.  Use `--force-with-lease` instead of `--force` for safety
+
+* * *
+
+### 7. Deployment & Pre-rendered Cache (CRITICAL)
+
+*   Some pages are "pre-rendered" and stored in the database in the `pages.rendered_html` column. When `rendered_html` is present for a published page, the PublicPageController will serve that HTML directly and bypass any runtime builders or PHP templates. This can make template/code changes invisible until the cache is cleared or the page is re-published.
+
+*   Checklist when changes aren't visible after syncing files and clearing browser cache:
+    1.  Open page source and look for the diagnostic comment at the top:
+        - `<!-- SERVED=pre-rendered | length=XXXX | ts=TIMESTAMP -->` means DB cache is being served.
+        - `<!-- SERVED=runtime | length=XXXX | ts=TIMESTAMP -->` means runtime builder/template was used.
+    2.  If pre-rendered, either:
+        - Clear `rendered_html` for the page (SQL UPDATE to set NULL) during development, or
+        - Re-publish the page via admin UI so the system re-generates `rendered_html` from the current code.
+    3.  Verify with a fresh request (Ctrl+Shift+R) and re-check the source comment.
+
+*   Do NOT assume file sync alone is sufficient to make template changes visible for published pages. Always check `rendered_html` when debugging.
+
+### 8. XAMPP Sync & Robocopy notes
+
+*   The repository includes `sync-to-xampp.ps1` which uses `robocopy /MIR` to mirror files to XAMPP. Robocopy is reliable but can silently skip files in edge-cases (timestamp/ACL differences or when files appear unchanged).
+
+*   Recommended practice when deploying critical PHP changes locally:
+    1.  Run `sync-to-xampp.ps1` as usual.
+    2.  If a change is not visible, **manually copy** the file to the XAMPP path with `Copy-Item -Force` (PowerShell) as a deterministic fallback.
+    3.  After copying, restart Apache (or run `touch` on `apache`-visible files) and re-request the page.
+
+*   Logging & Verification:
+    - Keep a short checklist in your debugging notes: `1) sync-to-xampp ran`, `2) file exists in XAMPP path`, `3) page source checked for SERVED=runtime/pre-rendered`, `4) rendered_html cleared or republished`.
+
+* * *
