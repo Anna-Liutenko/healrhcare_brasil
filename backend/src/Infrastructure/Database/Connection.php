@@ -66,30 +66,50 @@ class Connection
                 // Ensure foreign keys are enabled for sqlite
                 $pdo->exec('PRAGMA foreign_keys = ON;');
             } else {
-                $dsn = sprintf(
-                    '%s:host=%s;port=%s;dbname=%s;charset=%s',
-                    $dbConfig['driver'],
-                    $dbConfig['host'],
-                    $dbConfig['port'],
-                    $dbConfig['database'],
-                    $dbConfig['charset']
-                );
-
                 // Merge options with timeout
                 $options = $dbConfig['options'] ?? [];
                 $timeout = $dbConfig['timeout'] ?? 5;
                 $options[PDO::ATTR_TIMEOUT] = $timeout;
 
-                $pdo = new PDO(
-                    $dsn,
-                    $dbConfig['username'],
-                    $dbConfig['password'],
-                    $options
+                // Use 127.0.0.1 instead of localhost on Windows to avoid DNS issues
+                $host = $dbConfig['host'];
+                if (strtolower($host) === 'localhost') {
+                    $host = '127.0.0.1';
+                }
+
+                $dsn = sprintf(
+                    '%s:host=%s;port=%s;dbname=%s;charset=%s',
+                    $dbConfig['driver'],
+                    $host,
+                    $dbConfig['port'],
+                    $dbConfig['database'],
+                    $dbConfig['charset']
                 );
+
+                try {
+                    $pdo = new PDO(
+                        $dsn,
+                        $dbConfig['username'],
+                        $dbConfig['password'],
+                        $options
+                    );
+                } catch (PDOException $e) {
+                    throw new PDOException(
+                        'Database connection failed: ' . $e->getMessage(),
+                        (int) $e->getCode()
+                    );
+                }
             }
 
             return $pdo;
         } catch (PDOException $e) {
+            // Log error details
+            @file_put_contents(
+                __DIR__ . '/../../../logs/connection-errors.log',
+                date('Y-m-d H:i:s') . ' [FATAL] ' . $e->getMessage() . ' (Code: ' . $e->getCode() . ')' . PHP_EOL,
+                FILE_APPEND | LOCK_EX
+            );
+
             throw new PDOException(
                 'Database connection failed: ' . $e->getMessage(),
                 (int) $e->getCode()

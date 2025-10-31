@@ -72,7 +72,8 @@ class CreatePage
             collectionConfig: $data['collectionConfig'] ?? null,
             pageSpecificCode: $data['pageSpecificCode'] ?? null,
             renderedHtml: $data['rendered_html'] ?? $data['renderedHtml'] ?? null,
-            sourceTemplateSlug: $data['source_template_slug'] ?? $data['sourceTemplateSlug'] ?? null
+            sourceTemplateSlug: $data['source_template_slug'] ?? $data['sourceTemplateSlug'] ?? null,
+            cardImage: $data['cardImage'] ?? null
         );
 
     // Save page metadata
@@ -81,27 +82,32 @@ class CreatePage
         // Save blocks if present and repository is available
         if ($this->blockRepository !== null && !empty($data['blocks']) && is_array($data['blocks'])) {
             foreach ($data['blocks'] as $index => $blockData) {
-                $blockPayload = [];
-                if (isset($blockData['data']) && is_array($blockData['data'])) {
-                    $blockPayload = $blockData['data'];
-                } elseif (isset($blockData['content']) && is_array($blockData['content'])) {
-                    $blockPayload = $blockData['content'];
+                try {
+                    $blockPayload = [];
+                    if (isset($blockData['data']) && is_array($blockData['data'])) {
+                        $blockPayload = $blockData['data'];
+                    } elseif (isset($blockData['content']) && is_array($blockData['content'])) {
+                        $blockPayload = $blockData['content'];
+                    }
+
+                    // Extract client_id if provided (temporary ID from frontend)
+                    $clientId = $blockData['id'] ?? $blockData['clientId'] ?? $blockData['tempId'] ?? null;
+
+                    $block = new DomainBlock(
+                        id: \Ramsey\Uuid\Uuid::uuid4()->toString(),
+                        pageId: $page->getId(),
+                        type: $blockData['type'] ?? 'text-block',
+                        position: $blockData['position'] ?? $index,
+                        data: $blockPayload,
+                        customName: $blockData['custom_name'] ?? ($blockData['customName'] ?? null),
+                        clientId: $clientId
+                    );
+
+                    $this->blockRepository->save($block);
+                } catch (\Throwable $e) {
+                    error_log('[CreatePage] Block save error: ' . $e->getMessage() . ' | BlockData: ' . print_r($blockData, true));
+                    throw $e;
                 }
-
-                // Extract client_id if provided (temporary ID from frontend)
-                $clientId = $blockData['id'] ?? $blockData['clientId'] ?? $blockData['tempId'] ?? null;
-
-                $block = new DomainBlock(
-                    id: \Ramsey\Uuid\Uuid::uuid4()->toString(),
-                    pageId: $page->getId(),
-                    type: $blockData['type'] ?? 'text-block',
-                    position: $blockData['position'] ?? $index,
-                    data: $blockPayload,
-                    customName: $blockData['custom_name'] ?? ($blockData['customName'] ?? null),
-                    clientId: $clientId
-                );
-
-                $this->blockRepository->save($block);
             }
         }
 

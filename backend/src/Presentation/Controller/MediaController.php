@@ -61,7 +61,7 @@ class MediaController
     public function upload(): void
     {
         $startTime = ApiLogger::logRequest();
-
+        
         try {
 
             // Check if file was uploaded
@@ -78,15 +78,15 @@ class MediaController
 
             $mediaFile = $useCase->execute($_FILES['file'], $uploadedBy);
 
-            $response = [
-                'success' => true,
-                'file_id' => $mediaFile->getId(),
-                'file_url' => $mediaFile->getUrl(),
-                'filename' => $mediaFile->getFilename(),
-                'type' => $mediaFile->getType(),
-                'size' => $mediaFile->getSize(),
-                'human_size' => $mediaFile->getHumanReadableSize()
-            ];
+            $mediaData = EntityToArrayTransformer::mediaFileToArray($mediaFile);
+            
+            $response = array_merge(
+                [
+                    'success' => true,
+                ],
+                $mediaData
+            );
+            
             ApiLogger::logResponse(201, $response, $startTime);
             $this->jsonResponse($response, 201);
 
@@ -109,14 +109,17 @@ class MediaController
      */
     public function delete(string $mediaId): void
     {
+        error_log("[MediaController::delete] START - mediaId=$mediaId");
         $startTime = ApiLogger::logRequest();
 
         try {
-
+            error_log("[MediaController::delete] Creating repositories and use case");
             $mediaRepository = new MySQLMediaRepository();
             $useCase = new DeleteMedia($mediaRepository);
 
+            error_log("[MediaController::delete] Calling useCase->execute()");
             $useCase->execute($mediaId);
+            error_log("[MediaController::delete] useCase->execute() completed successfully");
 
             $response = [
                 'success' => true,
@@ -128,12 +131,21 @@ class MediaController
         } catch (InvalidArgumentException $e) {
             $statusCode = str_contains($e->getMessage(), 'not found') ? 404 : 400;
             $error = ['error' => $e->getMessage()];
+            error_log("[MediaController::delete] InvalidArgumentException: " . $e->getMessage());
             ApiLogger::logResponse($statusCode, $error, $startTime);
             $this->jsonResponse($error, $statusCode);
 
+        } catch (\RuntimeException $e) {
+            $error = ['error' => $e->getMessage()];
+            error_log("[MediaController::delete] RuntimeException: " . $e->getMessage());
+            ApiLogger::logError('MediaController::delete() runtime error', $e, ['mediaId' => $mediaId]);
+            ApiLogger::logResponse(500, $error, $startTime);
+            $this->jsonResponse($error, 500);
+
         } catch (\Throwable $throwable) {
             $error = ['error' => 'Internal server error'];
-            ApiLogger::logError('MediaController::delete() error', $throwable, ['mediaId' => $id]);
+            error_log("[MediaController::delete] Unexpected error: " . get_class($throwable) . " - " . $throwable->getMessage());
+            ApiLogger::logError('MediaController::delete() unexpected error', $throwable, ['mediaId' => $mediaId]);
             ApiLogger::logResponse(500, $error, $startTime);
             $this->jsonResponse($error, 500);
         }

@@ -80,6 +80,68 @@ $RECYCLE.BIN/
 *~
 
 # Custom project files (добавь свои если нужно)
-# temp_*.php
-# debug_*.html
-# test_*.php
+temp_*.php
+debug_*.html
+test_*.php
+temp_*.js
+temp_*.sql
+
+# Project-specific generated files
+check_*.php
+menu_result.json
+pages_list.json
+page_check_*.json
+api_pages.json
+image_check.txt
+
+# Development/Testing documentation (локальная документация)
+TESTING_*.md
+ANALYSIS_*.md
+CHAT_HISTORY_*.md
+*.local.md
+
+# Backup files (не нужны в repo)
+*.backup
+*.bak.*
+*_backup.sql
+backup_*.sql
+
+# XAMPP deployment logs
+httpd_*.txt
+deploy_*.log
+sync_*.log
+
+# Don't commit documentation that's generated during development
+00_START_HERE_*.md
+CRITICAL_FIX_*.md
+DEPLOY_*.md
+FIX_*.md
+PHASE_*.md
+POSTMORTEM_*.md
+PROMPT_*.md
+QUICK_*.md
+STRATEGY_*.md
+SYSTEM_*.md
+SYNC_*.md
+ROOT_CAUSE_*.md
+VERIFICATION_*.md
+IMMEDIATE_*.md
+ARCHITECTURE_*.md
+REFACTORING_*.md
+FINAL_*.md
+TEST_PLAN.md
+QUICK_GUIDE.md
+
+# Verify scripts (локальная проверка)
+verify_*.ps1
+check_*.ps1
+
+# Frontend uploads placeholder
+frontend/uploads/*.svg
+frontend/uploads/*.png
+frontend/uploads/*.jpg
+
+# Database restore files
+database/
+*.sql
+*.gz

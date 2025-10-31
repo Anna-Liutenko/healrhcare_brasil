@@ -71,6 +71,10 @@ class UpdatePage
             $page->setSeoKeywords($data['seoKeywords']);
         }
 
+        if (isset($data['cardImage'])) {
+            $page->setCardImage($data['cardImage']);
+        }
+
         if (isset($data['showInMenu'])) {
             $page->setShowInMenu($data['showInMenu']);
         }

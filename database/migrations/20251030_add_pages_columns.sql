@@ -1,0 +1,21 @@
+-- Migration: add missing columns to pages table
+-- Date: 2025-10-30
+-- Adds: collection_config (JSON), rendered_html (LONGTEXT), menu_title (VARCHAR)
+
+SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0;
+SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
+SET @OLD_SQL_MODE=@@SQL_MODE;
+
+-- Ensure we use utf8mb4 where applicable
+ALTER TABLE pages CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+ALTER TABLE pages
+  ADD COLUMN IF NOT EXISTS collection_config JSON NULL,
+  ADD COLUMN IF NOT EXISTS rendered_html LONGTEXT NULL,
+  ADD COLUMN IF NOT EXISTS menu_title VARCHAR(255) NULL;
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+
+-- End migration

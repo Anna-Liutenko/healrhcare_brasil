@@ -114,7 +114,8 @@ class ApiLogger
         self::writeLog('api-responses.log', $payload);
     }
 
-    public static function logError(string $message, ?\Exception $exception = null, array $context = []): void
+    // Accept Throwable so both Exception and Error (PHP 7+ Throwable) can be logged
+    public static function logError(string $message, ?\Throwable $exception = null, array $context = []): void
     {
         self::init();
 

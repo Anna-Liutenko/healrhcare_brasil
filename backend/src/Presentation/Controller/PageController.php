@@ -107,14 +107,24 @@ class PageController
 
         } catch (UnauthorizedException $e) {
             $error = ['error' => $e->getMessage()];
+            error_log('[PageController::create] Unauthorized: ' . $e->getMessage());
             ApiLogger::logResponse(401, $error, $startTime);
             $this->jsonResponse($error, 401);
         } catch (\InvalidArgumentException $e) {
-            $error = ['error' => $e->getMessage()];
-            ApiLogger::logResponse(400, $error, $startTime);
-            $this->jsonResponse($error, 400);
+                $error = [
+                    'success' => false,
+                    'error' => $e->getMessage(),
+                    'details' => [
+                        'data' => $data ?? [],
+                        'exception' => get_class($e)
+                    ]
+                ];
+                error_log('[PageController::create] InvalidArgumentException: ' . $e->getMessage() . ' | Data: ' . print_r($data ?? [], true));
+                ApiLogger::logResponse(400, $error, $startTime);
+                $this->jsonResponse($error, 400);
         } catch (\Exception $e) {
             $error = ['error' => $e->getMessage()];
+            error_log('[PageController::create] Exception: ' . $e->getMessage() . ' | Data: ' . print_r($data ?? [], true));
             ApiLogger::logError('PageController::create() error', $e);
             ApiLogger::logResponse(500, $error, $startTime);
             $this->jsonResponse(['success' => false, 'error' => 'Internal server error'], 500);

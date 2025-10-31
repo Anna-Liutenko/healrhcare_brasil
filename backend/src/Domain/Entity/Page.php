@@ -36,7 +36,8 @@ class Page
         private ?string $pageSpecificCode = null,
         private ?string $renderedHtml = null,
         private ?string $menuTitle = null,
-        private ?string $sourceTemplateSlug = null
+        private ?string $sourceTemplateSlug = null,
+        private ?string $cardImage = null
     ) {
     }
 
@@ -140,13 +141,18 @@ class Page
      */
     public function getCardImage(?array $blocks = null): string
     {
-        // 1. Кастомная картинка из collectionConfig
+        // 1. Приоритет: кастомная card_image из БД
+        if (!empty($this->cardImage)) {
+            return $this->cardImage;
+        }
+        
+        // 2. Кастомная картинка из collectionConfig (legacy)
         if ($this->collectionConfig && 
             isset($this->collectionConfig['cardImages'][$this->id])) {
             return $this->collectionConfig['cardImages'][$this->id];
         }
         
-        // 2-3. Извлечь из блоков (если переданы)
+        // 3-4. Извлечь из блоков (если переданы)
         if ($blocks) {
             foreach ($blocks as $block) {
                 // Expect $block to be an object with getType() and getData()
@@ -167,8 +173,8 @@ class Page
             }
         }
         
-        // 4. Fallback
-        return '/uploads/default-card.jpg';
+        // 5. Fallback
+        return '/healthcare-cms-frontend/uploads/default-card.svg';
     }
 
     /**
@@ -178,15 +184,7 @@ class Page
      */
     public function setCardImage(string $imageUrl): void
     {
-        if (!$this->collectionConfig) {
-            $this->collectionConfig = [];
-        }
-        
-        if (!isset($this->collectionConfig['cardImages'])) {
-            $this->collectionConfig['cardImages'] = [];
-        }
-        
-        $this->collectionConfig['cardImages'][$this->id] = $imageUrl;
+        $this->cardImage = $imageUrl;
         $this->touch();
     }
 

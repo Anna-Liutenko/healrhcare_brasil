@@ -28,7 +28,8 @@ const app = createApp({
                 status: 'draft',
                 seoTitle: '',
                 seoDescription: '',
-                seoKeywords: ''
+                seoKeywords: '',
+                cardImage: ''
             },
             autoGenerateSlug: true, // Флаг автогенерации slug
 
@@ -95,6 +96,11 @@ const app = createApp({
 
             // Collection editor data
             collectionItems: null,
+            collectionPagination: null,
+            currentCollectionPage: 1,
+            currentCollectionSection: 'guides',
+            currentCollectionItemId: null,
+            gallerySelectionMode: null,
 
             // Debug Panel
             debugPanelEnabled: typeof window !== 'undefined' ? window.__ENABLE_DEBUG_PANEL !== false : true,
@@ -232,6 +238,13 @@ const app = createApp({
                     this.debugMsg('Статус страницы изменён на не опубликованный — снимаем флажок показа в меню', 'info', { status: newVal });
                 }
                 this.pageSettings.showInMenu = false;
+            }
+        },
+
+        'pageData.type'(newVal) {
+            // When page type changes to 'collection', load collection items
+            if (newVal === 'collection' && this.currentPageId) {
+                this.loadCollectionItems();
             }
         }
     },
@@ -1434,6 +1447,11 @@ const app = createApp({
                 this.isEditMode = true;
                 this.autoGenerateSlug = false; // Отключаем автогенерацию при загрузке существующей страницы
 
+                // If this is a collection page, load collection items
+                if (this.pageData.type === 'collection') {
+                    await this.loadCollectionItems();
+                }
+
                 this.showNotification('Страница загружена', 'success');
                 this.debugMsg('Страница успешно загружена', 'success', { pageId: this.currentPageId, blocks: this.blocks.length });
             } catch (error) {
@@ -1445,21 +1463,50 @@ const app = createApp({
 
         // ===== Collection support =====
         // Загрузить элементы коллекции для текущей страницы-коллекции
-        async loadCollectionItems() {
+        async loadCollectionItems(page = 1) {
             if (!this.currentPageId) return;
             try {
-                this.debugMsg('Loading collection items', 'info', { pageId: this.currentPageId });
-                const res = await this.apiClient.get(`/api/pages/${this.currentPageId}/collection-items`);
+                this.debugMsg('Loading collection items', 'info', { pageId: this.currentPageId, page, section: this.currentCollectionSection });
+                const res = await this.apiClient.get(`/api/pages/${this.currentPageId}/collection-items?page=${page}&limit=12&section=${this.currentCollectionSection}`);
                 const json = await res.json();
                 if (json.success) {
                     this.collectionItems = json.data;
-                    this.debugMsg('Collection items loaded', 'success', { count: this.collectionItems.sections.reduce((acc, s) => acc + (s.items?.length||0), 0) });
+                    this.collectionPagination = json.data.pagination || null;
+                    this.currentCollectionPage = page;
+                    this.debugMsg('Collection items loaded', 'success', { 
+                        count: this.collectionItems.sections.reduce((acc, s) => acc + (s.items?.length||0), 0),
+                        page: this.collectionPagination?.currentPage,
+                        totalPages: this.collectionPagination?.totalPages,
+                        section: this.currentCollectionSection
+                    });
                 } else {
                     this.debugMsg('Failed to load collection items', 'warning', json.error || json);
                 }
             } catch (err) {
                 this.debugMsg('Error loading collection items', 'error', err);
             }
+        },
+
+        async loadCollectionPrevPage() {
+            if (this.collectionPagination && this.collectionPagination.hasPrevPage) {
+                await this.loadCollectionItems(this.currentCollectionPage - 1);
+            }
+        },
+
+        async loadCollectionNextPage() {
+            if (this.collectionPagination && this.collectionPagination.hasNextPage) {
+                await this.loadCollectionItems(this.currentCollectionPage + 1);
+            }
+        },
+
+        async switchCollectionSection(section) {
+            if (!['guides', 'articles'].includes(section)) {
+                this.showNotification('Неизвестная секция коллекции', 'error');
+                return;
+            }
+            this.currentCollectionSection = section;
+            this.currentCollectionPage = 1;
+            await this.loadCollectionItems(1);
         },
 
         // Обновить картинку карточки через API
@@ -1490,11 +1537,25 @@ const app = createApp({
             }
         },
 
-        // Открыть prompt для изменения картинки (простая галерея/URL)
+        // Open gallery to change collection card image
         async changeCardImage(targetPageId) {
-            const newImageUrl = prompt('Введите URL новой картинки:');
-            if (newImageUrl) {
-                await this.updateCardImage(targetPageId, newImageUrl);
+            this.currentCollectionItemId = targetPageId;
+            this.gallerySelectionMode = 'collection-card';
+            this.showGalleryModal = true;
+            await this.loadGalleryImages();
+        },
+
+        formatDate(dateString) {
+            if (!dateString) return 'Не опубликовано';
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('ru-RU', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            } catch (e) {
+                return dateString;
             }
         },
 
@@ -1573,6 +1634,7 @@ const app = createApp({
                 seoTitle: this.pageData.seoTitle || '',
                 seoDescription: this.pageData.seoDescription || '',
                 seoKeywords: this.pageData.seoKeywords || '',
+                cardImage: this.pageData.cardImage || '',
                 createdBy: this.currentUser.id
             });
 
@@ -1963,6 +2025,19 @@ const app = createApp({
 
         confirmImageSelection() {
             if (!this.selectedGalleryImage) return;
+            const imageUrl = this.selectedGalleryImage.displayUrl || this.selectedGalleryImage.url;
+
+            // Collection card mode -> update via API
+            if (this.gallerySelectionMode === 'collection-card') {
+                if (this.currentCollectionItemId) {
+                    this.updateCardImage(this.currentCollectionItemId, imageUrl);
+                }
+                this.currentCollectionItemId = null;
+                this.showGalleryModal = false;
+                this.selectedGalleryImage = null;
+                this.gallerySelectionMode = null;
+                return;
+            }
 
             const selectedValue = this.normalizeRelativeUrl(this.selectedGalleryImage.url);
 

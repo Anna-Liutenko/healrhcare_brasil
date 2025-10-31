@@ -56,18 +56,25 @@ class MySQLMediaRepository implements MediaRepositoryInterface
     {
         $stmt = $this->db->prepare('
             INSERT INTO media (
-                id, filename, url, type, size, uploaded_by, uploaded_at
+                id, filename, original_filename, url, type, mime_type, 
+                size, width, height, alt_text, uploaded_by, uploaded_at
             ) VALUES (
-                :id, :filename, :url, :type, :size, :uploaded_by, :uploaded_at
+                :id, :filename, :original_filename, :url, :type, :mime_type,
+                :size, :width, :height, :alt_text, :uploaded_by, :uploaded_at
             )
         ');
 
         $stmt->execute([
             'id' => $mediaFile->getId(),
             'filename' => $mediaFile->getFilename(),
+            'original_filename' => $mediaFile->getOriginalFilename(),
             'url' => $mediaFile->getUrl(),
             'type' => $mediaFile->getType(),
+            'mime_type' => $mediaFile->getMimeType(),
             'size' => $mediaFile->getSize(),
+            'width' => $mediaFile->getWidth(),
+            'height' => $mediaFile->getHeight(),
+            'alt_text' => $mediaFile->getAltText(),
             'uploaded_by' => $mediaFile->getUploadedBy(),
             'uploaded_at' => $mediaFile->getUploadedAt()->format('Y-m-d H:i:s')
         ]);
@@ -82,13 +89,18 @@ class MySQLMediaRepository implements MediaRepositoryInterface
     private function hydrate(array $row): MediaFile
     {
         return new MediaFile(
-            id: $row['id'],
-            filename: $row['filename'],
-            url: $row['url'],
-            type: $row['type'],
-            size: (int) $row['size'],
-            uploadedBy: $row['uploaded_by'],
-            uploadedAt: new DateTime($row['uploaded_at'])
+            $row['id'],
+            $row['filename'],
+            $row['url'],
+            $row['type'],
+            (int) $row['size'],
+            $row['uploaded_by'],
+            new DateTime($row['uploaded_at']),
+            $row['original_filename'],
+            $row['mime_type'],
+            $row['width'] !== null ? (int) $row['width'] : null,
+            $row['height'] !== null ? (int) $row['height'] : null,
+            $row['alt_text']
         );
     }
 }

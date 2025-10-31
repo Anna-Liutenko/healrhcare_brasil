@@ -92,13 +92,16 @@ class MySQLBlockRepository implements BlockRepositoryInterface
     {
         $stmt = $this->db->prepare('
             INSERT INTO blocks (
-                id, page_id, type, position, custom_name, client_id, data, created_at, updated_at
+                id, page_id, type, position, custom_name, data, created_at, updated_at
             ) VALUES (
-                :id, :page_id, :type, :position, :custom_name, :client_id, :data, :created_at, :updated_at
+                :id, :page_id, :type, :position, :custom_name, :data, :created_at, :updated_at
             )
         ');
 
-        $stmt->execute($this->extractData($block));
+        $data = $this->extractData($block);
+        // client_id is nullable and might not be set on new blocks
+        unset($data['client_id']);
+        $stmt->execute($data);
     }
 
     private function update(Block $block): void
@@ -108,14 +111,13 @@ class MySQLBlockRepository implements BlockRepositoryInterface
                 type = :type,
                 position = :position,
                 custom_name = :custom_name,
-                client_id = :client_id,
                 data = :data,
                 updated_at = :updated_at
             WHERE id = :id
         ');
 
         $data = $this->extractData($block);
-        unset($data['page_id'], $data['created_at']); // Не обновляем
+        unset($data['page_id'], $data['created_at'], $data['client_id']); // Не обновляем
 
         $stmt->execute($data);
     }
