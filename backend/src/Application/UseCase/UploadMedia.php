@@ -53,7 +53,6 @@ class UploadMedia
             throw new InvalidArgumentException('File size exceeds maximum limit of 10MB');
         }
 
-<<<<<<< HEAD
         // Detect MIME type with safe fallback when detection fails
         $mimeType = mime_content_type($file['tmp_name']);
         if ($mimeType === false) {

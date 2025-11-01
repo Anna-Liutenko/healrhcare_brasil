@@ -236,8 +236,11 @@ class ApiLogger
         $path = self::$logDir . '/' . $fileName;
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE);
 
-        if (strlen($json) > self::MAX_PAYLOAD_LENGTH) {
-            $json = substr($json, 0, self::MAX_PAYLOAD_LENGTH) . '…';
+        if ($json === false) {
+            // Fallback: write minimal info to avoid breaking the flow
+            $json = '{"error":"Failed to encode log payload"}';
+        } else {
+            $json = self::truncateString($json);
         }
 
         try {
@@ -296,10 +299,15 @@ class ApiLogger
 
         $decoded = json_decode($body, true);
         if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            return json_encode(self::sanitizeArray($decoded), JSON_UNESCAPED_UNICODE);
+            $sanitizedData = self::sanitizeArray($decoded);
+            $encoded = json_encode($sanitizedData, JSON_UNESCAPED_UNICODE);
+
+            if ($encoded !== false) {
+                return $encoded;
+            }
         }
 
-        return mb_substr($body, 0, self::MAX_PAYLOAD_LENGTH);
+        return mb_substr($body, 0, self::MAX_PAYLOAD_LENGTH, 'UTF-8');
     }
 
     private static function sanitizeResponse($response)
@@ -313,7 +321,7 @@ class ApiLogger
         }
 
         if (is_string($response)) {
-            return mb_substr($response, 0, self::MAX_PAYLOAD_LENGTH);
+            return self::truncateString($response);
         }
 
         return $response;
@@ -331,8 +339,9 @@ class ApiLogger
 
             if (is_array($value)) {
                 $data[$key] = self::sanitizeArray($value);
-            } elseif (is_string($value) && strlen($value) > self::MAX_PAYLOAD_LENGTH) {
-                $data[$key] = substr($value, 0, self::MAX_PAYLOAD_LENGTH) . '…';
+            } elseif (is_string($value)) {
+                $safeValue = self::truncateString($value);
+                $data[$key] = $safeValue;
             }
         }
 
@@ -352,5 +361,16 @@ class ApiLogger
         }
 
         return substr($token, 0, $visible) . '...' . substr($token, -$visible);
+    }
+
+    private static function truncateString(string $value): string
+    {
+        $normalized = mb_convert_encoding($value, 'UTF-8', 'UTF-8');
+
+        if (mb_strlen($normalized, 'UTF-8') > self::MAX_PAYLOAD_LENGTH) {
+            return mb_substr($normalized, 0, self::MAX_PAYLOAD_LENGTH, 'UTF-8') . '…';
+        }
+
+        return $normalized;
     }
 }

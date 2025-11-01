@@ -301,6 +301,36 @@ body {
     text-align: justify !important;
 }
 
+/* Quill image float/margin styles (preserve inline styles from attributors) */
+.article-editor-mode .ql-editor img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin: 1.5rem 0;
+}
+
+.article-editor-mode .ql-editor img[style*="float: left"] {
+    float: left;
+    margin-right: 10px; /* smaller wrap margin */
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+.article-editor-mode .ql-editor img[style*="float: right"] {
+    float: right;
+    margin-left: 10px; /* smaller wrap margin */
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+/* Ensure center-aligned images display as block */
+.article-editor-mode .ql-editor img:not([style*="float"]) {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+
 .settings-input:focus,
 .settings-textarea:focus,
 .settings-select:focus {

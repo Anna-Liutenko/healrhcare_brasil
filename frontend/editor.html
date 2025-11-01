@@ -313,12 +313,22 @@
                         <!-- Card Image for Articles/Guides -->
                         <div v-if="pageData.type === 'article' || pageData.type === 'guide'" class="settings-group">
                             <label class="settings-label">🖼️ Превью для коллекций</label>
-                            <input
-                                v-model="pageData.cardImage"
-                                class="settings-input"
-                                type="text"
-                                placeholder="/uploads/my-image.jpg или https://..."
-                            >
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input
+                                    v-model="pageData.cardImage"
+                                    class="settings-input"
+                                    type="text"
+                                    placeholder="/uploads/my-image.jpg или https://..."
+                                    style="flex: 1;"
+                                >
+                                <button
+                                    @click="openGalleryForCardImage"
+                                    style="padding: 0.75rem 1rem; background: var(--color-action); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; transition: all 0.3s ease; flex-shrink: 0;"
+                                    title="Выбрать из галереи"
+                                >
+                                    📁
+                                </button>
+                            </div>
                             <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">
                                 Картинка для отображения в галереях. Оставьте пустым — будет использоваться первое изображение из контента.
                             </small>
@@ -841,6 +851,6 @@
 
     <script src="js/InlineEditorManager.js"></script>
     <!-- DOMPurify must be loaded before editor.js so sanitizeHTML() is available -->
-    <script type="module" src="editor.js?v=1.5.20251024-reset"></script>
+    <script type="module" src="editor.js?v=2.0.20251031-slug-fix"></script>
 </body>
 </html>

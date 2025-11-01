@@ -125,12 +125,20 @@ HTML;
      */
     private function buildHeader(): string
     {
+        // Use shared header markup (same as frontend/components/header.html)
         return <<<HTML
-    <header class="main-header" style="background:#f4f4f6;padding:1rem 0;border-bottom:1px solid #e0e0e5;">
-        <nav class="container" style="display:flex;gap:2rem;align-items:center;">
-            <a href="/" style="color:#032a49;font-weight:600;">Главная</a>
-            <a href="/healthcare-cms-backend/public/p/all-materials" style="color:#008d8d;font-weight:600;">Все материалы</a>
-        </nav>
+    <header class="main-header">
+        <div class="container">
+            <a href="/" class="logo">Healthcare Hacks Brazil</a>
+            <nav class="main-nav">
+                <ul>
+                    <li><a href="/">Главная</a></li>
+                    <li><a href="/guides">Гайды</a></li>
+                    <li><a href="/blog">Блог</a></li>
+                    <li><a href="/bot">Бот</a></li>
+                </ul>
+            </nav>
+        </div>
     </header>
 
 HTML;
@@ -234,10 +242,13 @@ HTML;
      */
     private function buildFooter(): string
     {
+        // Use shared footer markup matching published pages
         return <<<HTML
-    <footer class="main-footer" style="background:#032a49;color:#fff;padding:2rem 0;margin-top:4rem;text-align:center;">
+    <footer class="main-footer">
         <div class="container">
-            <p>&copy; 2025 Healthcare Hacks Brazil</p>
+            <a href="/" class="logo">Healthcare Hacks Brazil</a>
+            <p>&copy; 2025 Анна Лютенко (Anna Liutenko). Все права защищены.</p>
+            <p><a href="#privacy">Политика конфиденциальности</a></p>
         </div>
     </footer>
 

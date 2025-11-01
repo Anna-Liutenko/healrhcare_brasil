@@ -28,6 +28,11 @@ class RenderPageHtml
      */
     public function execute(Page $page): string
     {
+        // If this is a collection page, use the specialized builder
+        if ($page->getType()->isCollection()) {
+            return $this->renderCollectionPage($page);
+        }
+
         // Get blocks for the page
         $blocks = $this->blockRepository->findByPageId($page->getId());
 
@@ -399,12 +404,20 @@ HTML;
 
         $titleHtml = $title ? "<h2>$title</h2>" : '';
 
+        // For article containerStyle, content is already Quill HTML (sanitized) - output as-is
+        // For normal containerStyle, wrap in <p> tags
+        if ($containerStyle === 'article') {
+            $contentHtml = $content;
+        } else {
+            $contentHtml = "<p>$content</p>";
+        }
+
         return <<<HTML
                 <section class="article-block">
                     <div class="$containerClass">
                         <div class="article-content $alignClass">
                             $titleHtml
-                            <p>$content</p>
+                            $contentHtml
                         </div>
                     </div>
                 </section>
@@ -554,6 +567,69 @@ HTML;
                 'detailsText' => 'Подробнее'
             ]
         ];
+    }
+
+    /**
+     * Render a collection page with sections and cards
+     * 
+     * Collections are special pages that display paginated content from other pages.
+     * For publication (static HTML), we render the first page of guides section.
+     */
+    private function renderCollectionPage(Page $page): string
+    {
+        try {
+            $pageRepository = new \Infrastructure\Repository\MySQLPageRepository();
+            $blockRepository = new \Infrastructure\Repository\MySQLBlockRepository();
+            
+            // Get collection items for the first page, guides section
+            $useCase = new GetCollectionItems($pageRepository, $blockRepository);
+            $collectionData = $useCase->execute($page->getId(), 'guides', 1, 12);
+            
+            $pagination = $collectionData['pagination'] ?? [
+                'currentPage' => 1,
+                'totalPages' => 1,
+                'totalItems' => 0,
+                'itemsPerPage' => 12,
+                'hasNextPage' => false,
+                'hasPrevPage' => false
+            ];
+            
+            // Convert Page entity to array for CollectionHtmlBuilder
+            $pageArray = [
+                'id' => $page->getId(),
+                'title' => $page->getTitle(),
+                'seo_title' => $page->getSeoTitle(),
+                'seo_description' => $page->getSeoDescription()
+            ];
+            
+            // Use CollectionHtmlBuilder to generate HTML
+            $builder = new \Presentation\Helper\CollectionHtmlBuilder(
+                $pageArray,
+                $collectionData,
+                $pagination,
+                'guides',
+                12
+            );
+            
+            return $builder->build();
+        } catch (\Throwable $e) {
+            // Fallback: render minimal collection HTML with error message
+            $title = htmlspecialchars($page->getTitle() ?? 'Коллекция', ENT_QUOTES, 'UTF-8');
+            return <<<HTML
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$title</title>
+</head>
+<body>
+    <h1>$title</h1>
+    <p>Ошибка при загрузке коллекции. Пожалуйста, попробуйте позже.</p>
+</body>
+</html>
+HTML;
+        }
     }
 }
 

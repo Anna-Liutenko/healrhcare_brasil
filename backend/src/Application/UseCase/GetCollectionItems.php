@@ -104,7 +104,7 @@ class GetCollectionItems
                 'id' => $paginatedPage->getId(),
                 'title' => $paginatedPage->getTitle(),
                 'snippet' => $paginatedPage->getSeoDescription() ?? '',
-                'image' => $paginatedPage->getCardImage($blocks),
+                'image' => $this->normalizeImageUrl($paginatedPage->getCardImage($blocks)),
                 'url' => '/healthcare-cms-backend/public/p/' . $paginatedPage->getSlug(),
                 'type' => $paginatedPage->getType()->value,
                 'publishedAt' => $paginatedPage->getPublishedAt()?->format('Y-m-d H:i:s')
@@ -150,6 +150,31 @@ class GetCollectionItems
         ];
 
         return $result;
+    }
+    
+    /**
+     * Нормализировать URL картинки
+     * 
+     * Конвертирует полные URL с localhost в относительные пути /uploads/
+     * Это нужно, чтобы картинки, загруженные в админке, работали на публичной стороне
+     * 
+     * @param string $url URL картинки (может быть полный или относительный)
+     * @return string Нормализированный URL (/uploads/... или /healthcare-cms-frontend/uploads/...)
+     */
+    private function normalizeImageUrl(string $url): string
+    {
+        if (empty($url)) {
+            return $url;
+        }
+        
+        // Конвертировать http://localhost/healthcare-cms-backend/public/uploads/... в /uploads/...
+        $url = (string)preg_replace(
+            '~^https?://localhost/healthcare-cms-backend/public(/uploads/.+)$~i',
+            '$1',
+            $url
+        );
+        
+        return $url;
     }
     
     /**
