@@ -62,7 +62,7 @@ class UpdatePageInline
         // Валидация Markdown (roundtrip: Markdown → HTML → sanitize → Markdown)
         $html = $this->markdownConverter->toHTML($request->newMarkdown);
         $sanitizedHTML = $this->sanitizer->sanitize($html, [
-            'allowedTags' => ['p', 'h2', 'h3', 'h4', 'strong', 'em', 'u', 's', 'a', 'ul', 'ol', 'li', 'img', 'br'],
+            'allowedTags' => ['p', 'h2', 'h3', 'h4', 'strong', 'em', 'b', 'i', 'u', 's', 'strike', 'a', 'ul', 'ol', 'li', 'img', 'br'],
             'allowedAttributes' => [
                 'a' => ['href', 'title', 'target'],
                 'img' => ['src', 'alt', 'width', 'height', 'class']

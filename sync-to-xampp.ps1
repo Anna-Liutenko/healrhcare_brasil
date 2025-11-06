@@ -1,6 +1,10 @@
 # Скрипт синхронизации файлов проекта в XAMPP
 # Запуск: powershell -ExecutionPolicy Bypass -File sync-to-xampp.ps1
 
+# Установка кодировки UTF-8 для правильной работы с русскими символами
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$PSDefaultParameterValues['*:Encoding'] = 'utf8'
+
 param(
     [switch]$DryRun
 )

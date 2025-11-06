@@ -675,3 +675,212 @@ section.last-block { padding-bottom: 6rem; }
         height: 180px;
     }
 }
+
+/* Inline toolbar buttons keep legacy styles for consistent look */
+.inline-toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: var(--bg-accent);
+    color: var(--text-dark);
+    font-family: var(--font-heading);
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.inline-toolbar-btn:hover {
+    background: var(--color-action);
+    color: var(--color-white);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0, 141, 141, 0.25);
+}
+
+.inline-toolbar-btn:active {
+    transform: translateY(0);
+}
+
+.inline-toolbar-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+/* --- Inline Editable Elements --- */
+[data-inline-editable="true"] {
+    transition: background-color 0.2s ease;
+}
+
+.inline-editable-ready {
+    cursor: text;
+}
+
+.inline-editable-ready:hover {
+    background-color: rgba(0, 141, 141, 0.05);
+    border-radius: 4px;
+}
+
+[data-inline-editable="true"][contenteditable="true"] {
+    background-color: rgba(233, 234, 242, 0.5);
+    border-radius: 4px;
+    outline: 2px solid var(--color-action);
+    outline-offset: 2px;
+}
+
+.inline-saved {
+    animation: flashSave 0.9s ease-out;
+}
+
+@keyframes flashSave {
+    0% {
+        background-color: rgba(76, 175, 80, 0.15);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.inline-save-error {
+    animation: flashError 1.6s ease-out;
+}
+
+@keyframes flashError {
+    0% {
+        background-color: rgba(244, 67, 54, 0.15);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* --- Inline Tooltip --- */
+.inline-tooltip {
+    position: fixed;
+    display: none;
+    padding: 0.5rem 0.8rem;
+    background: var(--text-dark);
+    color: var(--color-white);
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    z-index: 9998;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 4px 12px rgba(3, 42, 73, 0.3);
+}
+
+/* --- Inline Modal Styles --- */
+.inline-modal-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.inline-modal {
+    background: var(--color-white);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.inline-modal-body {
+    font-size: 1rem;
+    color: var(--text-dark);
+    margin-bottom: 1rem;
+    font-weight: 500;
+}
+
+.inline-modal-input {
+    margin-bottom: 1.5rem;
+}
+
+.inline-modal-input input {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--text-secondary);
+    border-radius: 6px;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    transition: border-color 0.2s ease;
+}
+
+.inline-modal-input input:focus {
+    outline: none;
+    border-color: var(--color-action);
+    box-shadow: 0 0 0 3px rgba(0, 141, 141, 0.1);
+}
+
+.inline-modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.inline-modal-actions button {
+    padding: 0.6rem 1.2rem;
+    border: none;
+    border-radius: 6px;
+    font-family: var(--font-heading);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.95rem;
+}
+
+.inline-modal-actions button:first-child {
+    background: var(--color-action);
+    color: var(--color-white);
+}
+
+.inline-modal-actions button:first-child:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 141, 141, 0.25);
+}
+
+.inline-modal-actions button:last-child {
+    background: var(--bg-accent);
+    color: var(--text-dark);
+}
+
+.inline-modal-actions button:last-child:hover {
+    background: rgba(3, 42, 73, 0.1);
+}

@@ -2,6 +2,7 @@ import { blockDefinitions } from './blocks.js';
 import { pageTemplates } from './templates.js';
 import ApiClient from './api-client.js';
 import { blockToAPI, blockFromAPI, generateSlug, toPlainObject } from './utils/mappers.js';
+import { renderInlineMarkdown as renderInlineMarkdownUtil } from './utils/renderInlineMarkdown.js';
 import { validateSlug } from './utils/validators.js';
 
 const { createApp } = Vue;
@@ -1103,16 +1104,16 @@ const app = createApp({
             const cardsHtml = cards.map((card, idx) => `
                 <div class="service-card">
                     <div class="icon">${card.icon || ''}</div>
-                    <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${this.escape(card.title || '')}</h3>
-                    <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${this.escape(card.text || '')}</p>
+                    <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${renderInlineMarkdownUtil(card.title || '', { inline: true })}</h3>
+                    <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${renderInlineMarkdownUtil(card.text || '', { inline: true })}</p>
                 </div>
             `).join('');
 
             return `
                 <section>
                     <div class="container">
-                        ${title ? `<h2 class="text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.escape(title)}</h2>` : ''}
-                        ${subtitle ? `<p class="sub-heading text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.subtitle" data-block-type="${block.type}">${this.escape(subtitle)}</p>` : ''}
+                        ${title ? `<h2 class="text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${renderInlineMarkdownUtil(title, { inline: true })}</h2>` : ''}
+                        ${subtitle ? `<p class="sub-heading text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.subtitle" data-block-type="${block.type}">${renderInlineMarkdownUtil(subtitle, { inline: true })}</p>` : ''}
                         <div class="services-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
                             ${cardsHtml}
                         </div>
@@ -1191,9 +1192,12 @@ const app = createApp({
             const containerClass = containerStyle === 'article' ? 'article-container' : 'container';
             const alignClass = alignment === 'center' ? 'text-center' : alignment === 'right' ? 'text-right' : 'text-left';
 
-            // Для статей (containerStyle='article') контент уже sanitized HTML из Quill
-            // Для обычных text-block'ов title может быть plain text
-            const safeContent = containerStyle === 'article' ? content : this.escape(content);
+            let safeContent;
+            if (containerStyle === 'article') {
+                safeContent = this.sanitizeHTML(content || '');
+            } else {
+                safeContent = this.renderInlineMarkdown(content || '');
+            }
             const safeTitle = title ? this.escape(title) : '';
 
             return `
@@ -1748,7 +1752,7 @@ const app = createApp({
                     'h1','h2','h3','h4','h5','h6',
                     'p','div','span','a','img',
                     'ul','ol','li',
-                    'strong','em','br',
+                    'strong','em','b','i','u','s','strike','br',
                     'section','article','header','footer',
                     'blockquote','code','pre'
                 ],
@@ -1813,7 +1817,7 @@ const app = createApp({
                     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
                     'p', 'div', 'span', 'a', 'img',
                     'ul', 'ol', 'li',
-                    'strong', 'em', 'br',
+                    'strong', 'em', 'b', 'i', 'u', 's', 'strike', 'br',  // Inline formatting tags (from execCommand)
                     'section', 'article', 'header', 'footer',
                     'blockquote', 'code', 'pre'
                 ],
@@ -1834,6 +1838,14 @@ const app = createApp({
             };
             
             return DOMPurify.sanitize(html, config);
+        },
+
+        renderInlineMarkdown(markdown) {
+            return renderInlineMarkdownUtil(markdown, {
+                sanitizeHTML: (html) => this.sanitizeHTML(html),
+                escapeText: (value) => this.escape(value),
+                escapeAttr: (value) => this.escapeAttr(value)
+            });
         },
 
         /**
