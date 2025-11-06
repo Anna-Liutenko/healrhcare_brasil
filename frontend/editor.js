@@ -171,7 +171,12 @@ const app = createApp({
                     if (!this._inlineManager) {
                         const previewEl = document.querySelector('.preview-wrapper');
                         const pid = new URLSearchParams(window.location.search).get('id');
-                        this._inlineManager = new window.InlineEditorManager(previewEl, pid);
+                        // Pass updateBlockField callback to sync Vue model with inline edits
+                        this._inlineManager = new window.InlineEditorManager(
+                            previewEl,
+                            pid,
+                            this.updateBlockField.bind(this)
+                        );
                     }
 
                     if (!this._inlineModeEnabled) {
@@ -391,6 +396,63 @@ const app = createApp({
                 }
                 this.showNotification('Блок удалён', 'success');
                 this.debugMsg('Блок удалён', 'warning', { index });
+            }
+        },
+
+        // Update block field (called by InlineEditorManager after save)
+        updateBlockField(blockId, fieldPath, newValue) {
+            try {
+                // Find block by ID
+                const block = this.blocks.find(b => b.id === blockId);
+                if (!block) {
+                    console.warn('[updateBlockField] Block not found:', blockId);
+                    return;
+                }
+
+                // Parse fieldPath: "data.cards[0].text" -> ["data", "cards[0]", "text"]
+                const pathParts = fieldPath.split('.');
+
+                // Remove "data" prefix if present
+                if (pathParts[0] === 'data') {
+                    pathParts.shift();
+                }
+
+                // Navigate to the field and update it
+                let ref = block.data;
+                for (let i = 0; i < pathParts.length; i++) {
+                    const key = pathParts[i];
+
+                    // Handle array access like "cards[0]"
+                    const arrayMatch = key.match(/^(.+)\[(\d+)\]$/);
+                    if (arrayMatch) {
+                        const arrayName = arrayMatch[1];
+                        const arrayIndex = parseInt(arrayMatch[2], 10);
+
+                        if (i === pathParts.length - 1) {
+                            // Last part - update value
+                            ref[arrayName][arrayIndex] = newValue;
+                        } else {
+                            // Navigate deeper
+                            ref = ref[arrayName][arrayIndex];
+                        }
+                    } else {
+                        // Regular key access
+                        if (i === pathParts.length - 1) {
+                            // Last part - update value
+                            ref[key] = newValue;
+                        } else {
+                            // Navigate deeper
+                            if (!ref[key]) {
+                                ref[key] = {};
+                            }
+                            ref = ref[key];
+                        }
+                    }
+                }
+
+                console.log('[updateBlockField] Updated successfully', { blockId, fieldPath, newValue });
+            } catch (err) {
+                console.error('[updateBlockField] Failed to update block field', err, { blockId, fieldPath, newValue });
             }
         },
 

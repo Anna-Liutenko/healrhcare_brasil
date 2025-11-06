@@ -6,9 +6,10 @@
  * - saveChanges uses Turndown if available, otherwise falls back to HTML
  */
 class InlineEditorManager {
-  constructor(previewElement, pageId) {
+  constructor(previewElement, pageId, updateCallback = null) {
     this.preview = previewElement;
     this.pageId = pageId;
+    this.updateCallback = updateCallback; // Callback to update Vue model after save
     this.activeElement = null;
     this.isInlineMode = false;
     this.undoStack = [];
@@ -283,6 +284,17 @@ class InlineEditorManager {
       // success: brief visual feedback
       this._flashSaved(this.activeElement);
       console.log('InlineEditor: save OK', json);
+
+      // Update Vue model if callback provided
+      if (this.updateCallback && typeof this.updateCallback === 'function') {
+        try {
+          this.updateCallback(blockId, fieldPath, markdown);
+          console.log('[InlineEditor] Vue model updated via callback', { blockId, fieldPath });
+        } catch (callbackErr) {
+          console.error('[InlineEditor] Callback failed', callbackErr);
+        }
+      }
+
       return json;
     } catch (err) {
       console.error('InlineEditor: network/save error', err);
