@@ -6,6 +6,8 @@ namespace Application\UseCase;
 
 use Domain\Entity\Page;
 use Domain\Repository\BlockRepositoryInterface;
+use Infrastructure\MarkdownConverter;
+use Infrastructure\HTMLSanitizer;
 
 /**
  * RenderPageHtml Use Case
@@ -15,11 +17,18 @@ use Domain\Repository\BlockRepositoryInterface;
  */
 class RenderPageHtml
 {
+    private MarkdownConverter $markdownConverter;
+    private HTMLSanitizer $htmlSanitizer;
+
     public function __construct(
         private BlockRepositoryInterface $blockRepository,
-        private ?\Infrastructure\Service\MarkdownRenderer $markdownRenderer = null
+        private ?\Infrastructure\Service\MarkdownRenderer $markdownRenderer = null,
+        ?MarkdownConverter $markdownConverter = null,
+        ?HTMLSanitizer $htmlSanitizer = null
     ) {
         $this->markdownRenderer = $markdownRenderer ?? new \Infrastructure\Service\MarkdownRenderer();
+        $this->markdownConverter = $markdownConverter ?? new MarkdownConverter();
+        $this->htmlSanitizer = $htmlSanitizer ?? new HTMLSanitizer();
     }
 
     /**
@@ -407,9 +416,9 @@ HTML;
         // For article containerStyle, content is already Quill HTML (sanitized) - output as-is
         // For normal containerStyle, wrap in <p> tags
         if ($containerStyle === 'article') {
-            $contentHtml = $content;
+            $contentHtml = $this->sanitizeRichHtml((string)$content);
         } else {
-            $contentHtml = "<p>$content</p>";
+            $contentHtml = $this->renderMarkdownFragment((string)$content);
         }
 
         return <<<HTML
@@ -422,6 +431,48 @@ HTML;
                     </div>
                 </section>
 HTML;
+    }
+
+    private function renderMarkdownFragment(string $markdown): string
+    {
+        $markdown = trim($markdown);
+        if ($markdown === '') {
+            return '';
+        }
+
+        $html = $this->markdownConverter->toHTML($markdown);
+
+        return $this->sanitizeInlineHtml($html);
+    }
+
+    private function sanitizeInlineHtml(string $html): string
+    {
+        return $this->htmlSanitizer->sanitize($html, [
+            'allowedTags' => ['p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'strike', 'a', 'ul', 'ol', 'li', 'code'],
+            'allowedAttributes' => [
+                'a' => ['href', 'title', 'target']
+            ],
+            'allowedSchemes' => ['http' => true, 'https' => true, 'mailto' => true]
+        ]);
+    }
+
+    private function sanitizeRichHtml(string $html): string
+    {
+        if (trim($html) === '') {
+            return '';
+        }
+
+        return $this->htmlSanitizer->sanitize($html, [
+            'allowedTags' => [
+                'p', 'br', 'strong', 'em', 'b', 'i', 'u', 's', 'strike', 'a', 'ul', 'ol', 'li',
+                'img', 'figure', 'figcaption', 'blockquote', 'code', 'pre', 'h2', 'h3', 'h4'
+            ],
+            'allowedAttributes' => [
+                'a' => ['href', 'title', 'target'],
+                'img' => ['src', 'alt', 'width', 'height', 'class']
+            ],
+            'allowedSchemes' => ['http' => true, 'https' => true, 'mailto' => true]
+        ]);
     }
 
     private function renderImageBlock(array $data): string

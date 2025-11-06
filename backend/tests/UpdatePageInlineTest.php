@@ -251,4 +251,72 @@ class UpdatePageInlineTest extends TestCase
 
         $this->useCase->execute($request);
     }
+
+    public function testFormattingRoundTripKeepsInlineTags(): void
+    {
+        $pageId = '550e8400-e29b-41d4-a716-446655440000';
+        $blockId = '660e8400-e29b-41d4-a716-446655440001';
+
+        $page = new Page(
+            id: $pageId,
+            title: 'Inline Formatting Page',
+            slug: 'inline-formatting-page',
+            status: \Domain\ValueObject\PageStatus::published(),
+            type: \Domain\ValueObject\PageType::Regular,
+            seoTitle: null,
+            seoDescription: null,
+            seoKeywords: null,
+            showInMenu: true,
+            showInSitemap: true,
+            menuOrder: 0,
+            createdAt: new \DateTime(),
+            updatedAt: new \DateTime(),
+            publishedAt: new \DateTime(),
+            trashedAt: null,
+            createdBy: 'test-user'
+        );
+
+        $block = new Block(
+            id: $blockId,
+            pageId: $pageId,
+            type: 'text-block',
+            position: 0,
+            data: ['content' => 'Original']
+        );
+
+        $this->pageRepo->expects($this->once())
+            ->method('findById')
+            ->with($pageId)
+            ->willReturn($page);
+
+        $this->blockRepo->expects($this->once())
+            ->method('findByPageId')
+            ->with($pageId)
+            ->willReturn([$block]);
+
+        $this->blockRepo->expects($this->once())
+            ->method('save')
+            ->with($block);
+
+        $payload = '**bold** _italic_ <u>underline</u> ~~strike~~ <b>legacy bold</b> <i>legacy italic</i> <strike>legacy strike</strike>';
+
+        $request = new UpdatePageInlineRequest(
+            pageId: $pageId,
+            blockId: $blockId,
+            fieldPath: 'data.content',
+            newMarkdown: $payload
+        );
+
+        $this->useCase->execute($request);
+
+        $saved = $block->getData()['content'] ?? '';
+
+        $this->assertStringContainsString('**bold**', $saved);
+        $this->assertStringContainsString('_italic_', $saved);
+        $this->assertStringContainsString('<u>underline</u>', $saved);
+        $this->assertStringContainsString('~~strike~~', $saved);
+        $this->assertStringContainsString('**legacy bold**', $saved);
+        $this->assertStringContainsString('_legacy italic_', $saved);
+        $this->assertStringContainsString('~~legacy strike~~', $saved);
+    }
 }

@@ -50,19 +50,35 @@ class MarkdownConverter
             return $this->htmlConverter->convert($html);
         }
 
-        // Lightweight fallback: strip tags but preserve meaningful line breaks and links.
-        // This is intentionally conservative — it avoids executing external packages
-        // and provides a safe, readable markdown-ish result for roundtrip validation.
-        $text = preg_replace('#<br\s*/?>#i', "\n", $html);
-        // Convert paragraphs to double line breaks
-        $text = preg_replace('#</p>\s*<p[^>]*>#i', "\n\n", $text);
-        // Remove all remaining tags
-        $text = strip_tags($text);
-        // Collapse multiple blank lines
-        $text = preg_replace('/\n{3,}/', "\n\n", $text);
-        // Trim
-        $text = trim($text);
+        // Lightweight fallback: keep basic inline formatting so round-trip tests remain stable.
+        $working = preg_replace('#<br\s*/?>#i', "\n", $html);
+        $working = preg_replace('#</p>\s*<p[^>]*>#i', "\n\n", $working);
 
-        return $text;
+        // Preserve underline tags (Markdown has no native representation)
+        $underlinePlaceholders = [];
+        $working = preg_replace_callback('#<u>(.*?)</u>#is', function ($matches) use (&$underlinePlaceholders) {
+            $token = '__U_PLACEHOLDER_' . count($underlinePlaceholders) . '__';
+            $underlinePlaceholders[$token] = '<u>' . $matches[1] . '</u>';
+            return $token;
+        }, $working);
+
+        // Convert basic inline formatting to Markdown equivalents
+        $working = preg_replace('#<(strong|b)>(.*?)</\\1>#is', '**$2**', $working);
+        $working = preg_replace('#<(em|i)>(.*?)</\\1>#is', '_$2_', $working);
+        $working = preg_replace('#<(s|strike)>(.*?)</\\1>#is', '~~$2~~', $working);
+
+        // Remove remaining HTML tags
+        $working = strip_tags($working);
+
+        // Restore underline placeholders as inline HTML (allowed by sanitizer)
+        if (!empty($underlinePlaceholders)) {
+            $working = str_replace(array_keys($underlinePlaceholders), array_values($underlinePlaceholders), $working);
+        }
+
+        // Collapse multiple blank lines and trim
+        $working = preg_replace('/\n{3,}/', "\n\n", $working);
+        $working = trim($working);
+
+        return $working;
     }
 }

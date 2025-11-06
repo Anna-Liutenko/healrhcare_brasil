@@ -2,7 +2,9 @@ import { blockDefinitions } from './blocks.js';
 import { pageTemplates } from './templates.js';
 import ApiClient from './api-client.js';
 import { blockToAPI, blockFromAPI, generateSlug, toPlainObject } from './utils/mappers.js';
+import { renderInlineMarkdown as renderInlineMarkdownUtil } from './utils/renderInlineMarkdown.js';
 import { validateSlug } from './utils/validators.js';
+import InlineEditorManager from './js/InlineEditorManager.js';
 
 const { createApp } = Vue;
 
@@ -158,8 +160,10 @@ const app = createApp({
         }
 
         // Initialize inline editor toggle (Stage 1)
+        console.log('[editor.js] 🔧 About to initialize toggleInlineMode button listener');
         this.$nextTick(() => {
             const toggleBtn = document.getElementById('toggleInlineMode');
+            console.log('[editor.js] 🔧 toggleInlineMode button found:', !!toggleBtn);
             if (toggleBtn) {
                 const enableLabel = toggleBtn.dataset.inlineEnableLabel || '📝 Enable Inline Editing';
                 const disableLabel = toggleBtn.dataset.inlineDisableLabel || '🚫 Disable Inline Editing';
@@ -167,11 +171,19 @@ const app = createApp({
                 // initialize text according to current state
                 toggleBtn.textContent = this._inlineModeEnabled ? disableLabel : enableLabel;
 
-                toggleBtn.addEventListener('click', () => {
+                const clickHandler = () => {
+                    console.log('[editor.js] 🔘 toggleInlineMode CLICKED');
                     if (!this._inlineManager) {
                         const previewEl = document.querySelector('.preview-wrapper');
                         const pid = new URLSearchParams(window.location.search).get('id');
-                        this._inlineManager = new window.InlineEditorManager(previewEl, pid);
+                        // Pass updateBlockField callback to sync Vue model with inline edits
+                        console.log('[editor.js] Creating InlineEditorManager with callback');
+                        this._inlineManager = new window.InlineEditorManager(
+                            previewEl,
+                            pid,
+                            this.updateBlockField.bind(this)
+                        );
+                        console.log('[editor.js] InlineEditorManager created, callback:', !!this._inlineManager.updateCallback);
                     }
 
                     if (!this._inlineModeEnabled) {
@@ -187,7 +199,12 @@ const app = createApp({
                         toggleBtn.classList.remove('btn-danger');
                         toggleBtn.setAttribute('aria-pressed', 'false');
                     }
-                });
+                };
+
+                // Remove existing listener to prevent duplicates, then add fresh one
+                toggleBtn.removeEventListener('click', this._toggleClickHandler);
+                this._toggleClickHandler = clickHandler; // store reference for removal
+                toggleBtn.addEventListener('click', this._toggleClickHandler);
             }
 
             // Keyboard shortcuts: undo/redo
@@ -380,6 +397,75 @@ const app = createApp({
             this.blocks.splice(index + 1, 0, blockCopy);
             this.showNotification('Блок продублирован', 'success');
             this.debugMsg('Блок продублирован', 'success', { index });
+        },
+
+        /**
+         * Update block field called by InlineEditorManager after save
+         * @param {string} blockId - Block ID
+         * @param {string} fieldPath - Field path like "data.text" or "data.cards[0].title"
+         * @param {string} newValue - New value (markdown)
+         */
+        updateBlockField(blockId, fieldPath, newValue) {
+            try {
+                // Find block by ID
+                const block = this.blocks.find(b => b.id === blockId);
+                if (!block) {
+                    console.warn('[updateBlockField] Block not found:', blockId);
+                    return;
+                }
+
+                // Parse fieldPath: "data.cards[0].text" -> ["data", "cards[0]", "text"]
+                const pathParts = fieldPath.split('.');
+
+                // Navigate to the target object
+                let target = block;
+                for (let i = 0; i < pathParts.length - 1; i++) {
+                    const part = pathParts[i];
+                    
+                    // Handle array access: "cards[0]" -> {key: "cards", index: 0}
+                    const arrayMatch = part.match(/^(\w+)\[(\d+)\]$/);
+                    if (arrayMatch) {
+                        const [, key, index] = arrayMatch;
+                        target = target[key][parseInt(index)];
+                    } else {
+                        target = target[part];
+                    }
+                    
+                    if (!target) {
+                        console.warn('[updateBlockField] Path not found:', fieldPath, 'at part:', part);
+                        return;
+                    }
+                }
+
+                // Set final value
+                const lastPart = pathParts[pathParts.length - 1];
+                const arrayMatch = lastPart.match(/^(\w+)\[(\d+)\]$/);
+                if (arrayMatch) {
+                    const [, key, index] = arrayMatch;
+                    target[key][parseInt(index)] = newValue;
+                } else {
+                    target[lastPart] = newValue;
+                }
+
+                console.log('[updateBlockField] Vue model updated', {
+                    blockId,
+                    fieldPath,
+                    newValuePreview: newValue.slice(0, 100)
+                });
+                
+                // After Vue updates the DOM, refresh inline editor listeners
+                // (because if inline mode is active, new elements were created)
+                if (this._inlineManager && this._inlineModeEnabled) {
+                    this.$nextTick(() => {
+                        this._inlineManager.refreshEditableElements();
+                    });
+                }
+            } catch (err) {
+                console.error('[updateBlockField] Error updating field:', err, {
+                    blockId,
+                    fieldPath
+                });
+            }
         },
 
         removeBlock(index) {
@@ -902,6 +988,47 @@ const app = createApp({
             return div.innerHTML;
         },
 
+        /**
+         * Render Markdown to HTML with sanitization
+         * @param {string} markdown - Markdown text to convert
+         * @returns {string} - Sanitized HTML
+         */
+        renderMarkdown(markdown) {
+            if (!markdown) return '';
+            
+            // 1. Convert Markdown → HTML using marked.js
+            let html = '';
+            try {
+                if (typeof marked !== 'undefined' && marked.parse) {
+                    html = marked.parse(markdown, { 
+                        breaks: true,  // Support line breaks
+                        gfm: true      // GitHub Flavored Markdown
+                    });
+                } else {
+                    console.warn('[renderMarkdown] marked.js not loaded, fallback to escape');
+                    return this.escape(markdown);
+                }
+            } catch (err) {
+                console.error('[renderMarkdown] marked.parse failed:', err);
+                return this.escape(markdown);
+            }
+            
+            // 2. Sanitize through DOMPurify (defense in depth)
+            // NOTE: We exclude <p> tags because they will be wrapped in <p>, <h*>, or other block elements
+            // including <p> would cause nested <p> tags which browsers auto-correct and cause DOM reflow
+            if (typeof DOMPurify !== 'undefined') {
+                html = DOMPurify.sanitize(html, {
+                    ALLOWED_TAGS: ['strong', 'em', 'u', 's', 'a', 'br', 'b', 'i'],
+                    ALLOWED_ATTR: ['href', 'title', 'target'],
+                    ALLOW_DATA_ATTR: false
+                });
+            } else {
+                console.warn('[renderMarkdown] DOMPurify not loaded');
+            }
+            
+            return html;
+        },
+
             escapeAttr(str) {
                 if (str === null || str === undefined) return '';
                 return String(str)
@@ -1071,7 +1198,7 @@ const app = createApp({
                 <section class="hero" style="background-image: linear-gradient(rgba(3, 42, 73, 0.6), rgba(3, 42, 73, 0.6)), url('${this.escape(bgImage)}');">
                     <div class="container">
                         <h1 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${title}</h1>
-                        <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}">${this.escape(text)}</p>
+                        <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}">${this.renderMarkdown(text)}</p>
                         <a href="${this.escape(buttonLink)}" class="btn btn-primary">${this.escape(buttonText)}</a>
                     </div>
                 </section>
@@ -1086,8 +1213,8 @@ const app = createApp({
             return `
                 <section class="page-header unified-background">
                     <div class="container">
-                        <h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.escape(title)}</h2>
-                        ${subtitle ? `<p class="sub-heading" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.subtitle" data-block-type="${block.type}">${this.escape(subtitle)}</p>` : ''}
+                        <h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.renderMarkdown(title)}</h2>
+                        ${subtitle ? `<p class="sub-heading" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.subtitle" data-block-type="${block.type}">${this.renderMarkdown(subtitle)}</p>` : ''}
                     </div>
                 </section>
             `;
@@ -1103,16 +1230,16 @@ const app = createApp({
             const cardsHtml = cards.map((card, idx) => `
                 <div class="service-card">
                     <div class="icon">${card.icon || ''}</div>
-                    <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${this.escape(card.title || '')}</h3>
-                    <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${this.escape(card.text || '')}</p>
+                    <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${renderInlineMarkdownUtil(card.title || '', { inline: true })}</h3>
+                    <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${renderInlineMarkdownUtil(card.text || '', { inline: true })}</p>
                 </div>
             `).join('');
 
             return `
                 <section>
                     <div class="container">
-                        ${title ? `<h2 class="text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.escape(title)}</h2>` : ''}
-                        ${subtitle ? `<p class="sub-heading text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.subtitle" data-block-type="${block.type}">${this.escape(subtitle)}</p>` : ''}
+                        ${title ? `<h2 class="text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${renderInlineMarkdownUtil(title, { inline: true })}</h2>` : ''}
+                        ${subtitle ? `<p class="sub-heading text-center" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.subtitle" data-block-type="${block.type}">${renderInlineMarkdownUtil(subtitle, { inline: true })}</p>` : ''}
                         <div class="services-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
                             ${cardsHtml}
                         </div>
@@ -1134,8 +1261,8 @@ const app = createApp({
                 <div class="article-card">
                     <img src="${this.escape(imageUrl)}" alt="${this.escape(card.title || '')}">
                     <div class="article-card-content">
-                        <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${this.escape(card.title || '')}</h3>
-                        <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${this.escape(card.text || '')}</p>
+                        <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].title" data-block-type="${block.type}">${this.renderMarkdown(card.title || '')}</h3>
+                        <p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.cards[${idx}].text" data-block-type="${block.type}">${this.renderMarkdown(card.text || '')}</p>
                         <a href="${this.escape(card.link || '#')}">Читать далее &rarr;</a>
                     </div>
                 </div>
@@ -1145,7 +1272,7 @@ const app = createApp({
             return `
                 <section style="padding-top: ${title ? '6rem' : '0'};">
                     <div class="container">
-                        ${title ? `<h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.escape(title)}</h2>` : ''}
+                        ${title ? `<h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.renderMarkdown(title)}</h2>` : ''}
                         <div class="articles-grid" style="grid-template-columns: repeat(${columns}, 1fr);">
                             ${cardsHtml}
                         </div>
@@ -1162,8 +1289,8 @@ const app = createApp({
             const paragraphs = data.paragraphs || [];
 
             const paragraphsHtml = paragraphs.map((p, idx) => {
-                const text = this.escape(typeof p === 'string' ? p : p.text || '');
-                return `<p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.paragraphs[${idx}]" data-block-type="${block.type}">${text}</p>`;
+                const text = typeof p === 'string' ? p : p.text || '';
+                return `<p data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.paragraphs[${idx}]" data-block-type="${block.type}">${this.renderMarkdown(text)}</p>`;
             }).join('');
 
             return `
@@ -1172,7 +1299,7 @@ const app = createApp({
                         <div class="about-me">
                             <img src="${this.escape(image)}" alt="${this.escape(title)}" class="about-me-photo">
                             <div>
-                                <h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.escape(title)}</h2>
+                                <h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${this.renderMarkdown(title)}</h2>
                                 ${paragraphsHtml}
                             </div>
                         </div>
@@ -1191,17 +1318,26 @@ const app = createApp({
             const containerClass = containerStyle === 'article' ? 'article-container' : 'container';
             const alignClass = alignment === 'center' ? 'text-center' : alignment === 'right' ? 'text-right' : 'text-left';
 
-            // Для статей (containerStyle='article') контент уже sanitized HTML из Quill
-            // Для обычных text-block'ов title может быть plain text
-            const safeContent = containerStyle === 'article' ? content : this.escape(content);
-            const safeTitle = title ? this.escape(title) : '';
+            let safeContent;
+            if (containerStyle === 'article') {
+                safeContent = this.sanitizeHTML(content || '');
+            } else {
+                // Use inline mode to prevent <p> wrapping inside <div data-inline-editable>
+                safeContent = renderInlineMarkdownUtil(content || '', { 
+                    sanitizeHTML: (html) => this.sanitizeHTML(html),
+                    escapeText: (value) => this.escape(value),
+                    escapeAttr: (value) => this.escapeAttr(value),
+                    inline: true  // IMPORTANT: Prevent <p> tags inside contenteditable div
+                });
+            }
+            const safeTitle = title ? this.renderMarkdown(title) : '';
 
             return `
                 <section class="article-block">
                     <div class="${containerClass}">
                         <div class="article-content ${alignClass}">
                             ${safeTitle ? `<h2 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.title" data-block-type="${block.type}">${safeTitle}</h2>` : ''}
-                            <div data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.content" data-block-type="${block.type}">${safeContent}</div>
+                            <div data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.content" data-block-type="${block.type}" style="overflow-wrap: break-word; white-space: pre-wrap; word-break: break-word;">${safeContent}</div>
                         </div>
                     </div>
                 </section>
@@ -1236,7 +1372,7 @@ const app = createApp({
                     <div class="container">
                         <figure style="max-width: 900px; margin: 0 auto;">
                             <img src="${this.escape(url)}" alt="${this.escape(alt)}" class="${this.escapeAttr(imageClass)}" style="${this.escapeAttr(imageStyle)}">
-                            ${caption ? `<figcaption data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.caption" data-block-type="${block.type}" style="text-align: center; color: var(--text-secondary); margin-top: 1rem; font-size: 0.95rem;">${this.escape(caption)}</figcaption>` : ''}
+                            ${caption ? `<figcaption data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.caption" data-block-type="${block.type}" style="text-align: center; color: var(--text-secondary); margin-top: 1rem; font-size: 0.95rem;">${this.renderMarkdown(caption)}</figcaption>` : ''}
                         </figure>
                     </div>
                 </section>
@@ -1251,7 +1387,7 @@ const app = createApp({
                 <section class="article-block">
                     <div class="article-container">
                         <div class="article-content">
-                            <blockquote data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}">${this.escape(text)}</blockquote>
+                            <blockquote data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}">${this.renderMarkdown(text)}</blockquote>
                         </div>
                     </div>
                 </section>
@@ -1271,7 +1407,7 @@ const app = createApp({
             return `
                 <section style="padding-top: 0;">
                     <div class="container ${alignClass}" style="margin-top: 3rem; display: flex; justify-content: ${alignment === 'left' ? 'flex-start' : alignment === 'right' ? 'flex-end' : 'center'};">
-                        <a href="${this.escape(link)}" class="btn ${btnClass}" style="display: inline-block; width: auto;" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}">${this.escape(text)}</a>
+                        <a href="${this.escape(link)}" class="btn ${btnClass}" style="display: inline-block; width: auto;" data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}">${this.renderMarkdown(text)}</a>
                     </div>
                 </section>
             `;
@@ -1287,7 +1423,7 @@ const app = createApp({
             return `
                 <section class="article-block" style="padding-top: 2rem;">
                     <div class="container">
-                        <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}" style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 1rem; color: var(--text-dark); ${style}">${this.escape(text)}</h3>
+                        <h3 data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.text" data-block-type="${block.type}" style="font-family: var(--font-heading); font-size: 1.8rem; margin-bottom: 1rem; color: var(--text-dark); ${style}">${this.renderMarkdown(text)}</h3>
                     </div>
                 </section>
             `;
@@ -1321,7 +1457,7 @@ const app = createApp({
                                     disabled
                                 >
                                 <button style="padding: 0.75rem 1.5rem; background: var(--color-action); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 1.2rem;">
-                                    <span data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.buttonText" data-block-type="${block.type}">${this.escape(buttonText)}</span>
+                                    <span data-inline-editable="true" data-block-id="${block.id || ''}" data-field-path="data.buttonText" data-block-type="${block.type}">${this.renderMarkdown(buttonText)}</span>
                                 </button>
                             </div>
                         </div>
@@ -1719,6 +1855,14 @@ const app = createApp({
                     this.debugMsg('Рефреш страницы из API после сохранения для синхронизации ID', 'info', { pageId: this.currentPageId });
                     await this.loadPageFromAPI(this.currentPageId);
                     this.debugMsg('Синхронизация блоков с серверными ID завершена', 'success', { pageId: this.currentPageId });
+                    
+                    // Refresh inline editor listeners if in inline mode
+                    // (because Vue re-rendered the blocks, so old event listeners are lost)
+                    if (this._inlineManager && this._inlineModeEnabled) {
+                        this.$nextTick(() => {
+                            this._inlineManager.refreshEditableElements();
+                        });
+                    }
                 } catch (e) {
                     this.debugMsg('Не удалось рефрешнуть страницу после сохранения', 'warning', { message: e.message });
                 }
@@ -1748,7 +1892,7 @@ const app = createApp({
                     'h1','h2','h3','h4','h5','h6',
                     'p','div','span','a','img',
                     'ul','ol','li',
-                    'strong','em','br',
+                    'strong','em','b','i','u','s','strike','br',
                     'section','article','header','footer',
                     'blockquote','code','pre'
                 ],
@@ -1813,7 +1957,7 @@ const app = createApp({
                     'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
                     'p', 'div', 'span', 'a', 'img',
                     'ul', 'ol', 'li',
-                    'strong', 'em', 'br',
+                    'strong', 'em', 'b', 'i', 'u', 's', 'strike', 'br',  // Inline formatting tags (from execCommand)
                     'section', 'article', 'header', 'footer',
                     'blockquote', 'code', 'pre'
                 ],
@@ -1834,6 +1978,14 @@ const app = createApp({
             };
             
             return DOMPurify.sanitize(html, config);
+        },
+
+        renderInlineMarkdown(markdown) {
+            return renderInlineMarkdownUtil(markdown, {
+                sanitizeHTML: (html) => this.sanitizeHTML(html),
+                escapeText: (value) => this.escape(value),
+                escapeAttr: (value) => this.escapeAttr(value)
+            });
         },
 
         /**
