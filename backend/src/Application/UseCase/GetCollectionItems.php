@@ -149,6 +149,10 @@ class GetCollectionItems
             'currentSection' => $sectionSlug
         ];
 
+        // 10. Добавить информацию о пустой коллекции
+        $result['isEmpty'] = $totalItems === 0;
+        $result['emptyMessage'] = $totalItems === 0 ? 'Элементов не найдено' : null;
+
         return $result;
     }
     

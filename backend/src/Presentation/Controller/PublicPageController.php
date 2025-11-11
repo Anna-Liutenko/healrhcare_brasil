@@ -606,12 +606,13 @@ class PublicPageController
             
             // Read page number and section from URL
             $currentPage = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
-            $section = $_GET['section'] ?? 'guides'; // default to guides
+            $section = $_GET['section'] ?? null;
             $limit = 12;
 
-            // Validate section
-            if (!in_array($section, ['guides', 'articles'], true)) {
-                $section = 'guides';
+            // Validate section - если section не указан, используем 'guides' как дефолт
+            $allowedSections = ['guides', 'articles'];
+            if ($section === null || !in_array($section, $allowedSections, true)) {
+                $section = 'guides'; // Default to guides
             }
 
             $useCase = new \Application\UseCase\GetCollectionItems($pageRepo, $blockRepo);
