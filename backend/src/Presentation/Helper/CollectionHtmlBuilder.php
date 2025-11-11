@@ -21,14 +21,14 @@ class CollectionHtmlBuilder
     private array $page;
     private array $collectionData;
     private array $pagination;
-    private string $section;
+    private ?string $section;
     private int $limit;
 
     public function __construct(
         array $page,
         array $collectionData,
         array $pagination,
-        string $section,
+        ?string $section,
         int $limit = 12
     ) {
         $this->page = $page;
@@ -162,7 +162,8 @@ HTML;
      */
     private function buildTabs(): string
     {
-        $guidesActive = $this->section === 'guides' ? ' active' : '';
+        // Если section не указан (null), по умолчанию активен "guides"
+        $guidesActive = ($this->section === 'guides' || $this->section === null) ? ' active' : '';
         $articlesActive = $this->section === 'articles' ? ' active' : '';
 
         return <<<HTML
