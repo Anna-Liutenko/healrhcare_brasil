@@ -160,6 +160,36 @@ class ApiClient {
         }
     }
 
+    // ===== CONVENIENCE METHODS =====
+
+    /**
+     * GET request helper
+     */
+    async get(endpoint) {
+        return this.request(endpoint, { method: 'GET' });
+    }
+
+    /**
+     * POST request helper
+     */
+    async post(endpoint, body) {
+        return this.request(endpoint, { method: 'POST', body });
+    }
+
+    /**
+     * PUT request helper
+     */
+    async put(endpoint, body) {
+        return this.request(endpoint, { method: 'PUT', body });
+    }
+
+    /**
+     * DELETE request helper
+     */
+    async delete(endpoint) {
+        return this.request(endpoint, { method: 'DELETE' });
+    }
+
     // ===== AUTH ENDPOINTS =====
 
     /**
