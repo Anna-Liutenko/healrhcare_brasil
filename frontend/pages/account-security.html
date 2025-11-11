@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Безопасность аккаунта - Healthcare Brazil CMS</title>
+
+    <link rel="stylesheet" href="../styles/main.css" crossorigin="anonymous">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
+            font-family: var(--font-heading);
+        }
+
+        [v-cloak] { display: none; }
+
+        .security-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        .security-header {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .security-header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #333;
+        }
+
+        .security-section {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        .security-section-title {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #333;
+            margin: 0 0 20px 0;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .security-section-title .icon {
+            font-size: 24px;
+        }
+
+        .security-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .security-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .security-label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .security-label-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .security-label-hint {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .security-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-verified {
+            background: #c3fae8;
+            color: #2b8a3e;
+        }
+
+        .status-unverified {
+            background: #ffe0e0;
+            color: #c92a2a;
+        }
+
+        .status-active {
+            background: #c3fae8;
+            color: #2b8a3e;
+        }
+
+        .status-locked {
+            background: #ffe0e0;
+            color: #c92a2a;
+        }
+
+        .status-unknown {
+            background: #f0f0f0;
+            color: #666;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: #999;
+            margin-top: 6px;
+        }
+
+        /* Password strength indicator container */
+        .password-strength-container {
+            margin-top: 15px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-save {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-save:active {
+            transform: translateY(0);
+        }
+
+        .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-cancel {
+            padding: 12px 24px;
+            background: #f0f0f0;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-cancel:hover {
+            background: #e8e8e8;
+        }
+
+        .btn-action {
+            padding: 10px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: #5568d3;
+        }
+
+        .info-box {
+            background: #f0f7ff;
+            border: 2px solid #e0ebff;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .info-box.warning {
+            background: #fff8e0;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+
+        .info-box.error {
+            background: #ffe0e0;
+            border-color: #ffb3b3;
+            color: #c92a2a;
+        }
+
+        .info-box strong {
+            font-weight: 600;
+        }
+
+        .login-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .login-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .login-item-time {
+            color: #666;
+            min-width: 150px;
+        }
+
+        .login-item-ip {
+            color: #999;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            min-width: 120px;
+        }
+
+        .login-item-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .login-item-status.success {
+            background: #c3fae8;
+            color: #2b8a3e;
+        }
+
+        .login-item-status.failed {
+            background: #ffe0e0;
+            color: #c92a2a;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 30px 20px;
+            color: #999;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideInRight 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        .notification.success {
+            border-left: 4px solid #48bb78;
+            color: #22543d;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f56565;
+            color: #742a2a;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .security-container {
+                padding: 10px;
+            }
+
+            .security-section {
+                padding: 15px;
+            }
+
+            .security-row {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+
+            .btn-save,
+            .btn-cancel,
+            .btn-action {
+                width: 100%;
+            }
+
+            .login-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body v-cloak>
+
+<div id="app">
+    <!-- Back link -->
+    <div class="security-container" style="padding-top: 10px; padding-bottom: 0;">
+        <a href="index.html" class="back-link">← Вернуться в админ-панель</a>
+    </div>
+
+    <!-- Header -->
+    <div class="security-container">
+        <div class="security-header">
+            <h1>🔐 Безопасность аккаунта</h1>
+        </div>
+    </div>
+
+    <!-- Email Verification Section -->
+    <div class="security-container">
+        <div class="security-section">
+            <h3 class="security-section-title">
+                <span class="icon">📧</span>
+                Подтверждение Email
+            </h3>
+
+            <div class="security-row">
+                <div class="security-label">
+                    <span class="security-label-title">Статус</span>
+                    <span class="security-label-hint">{{ currentUser.email }}</span>
+                </div>
+                <div class="security-status">
+                    <span v-if="emailVerificationStatus && emailVerificationStatus.is_verified" class="status-badge status-verified">
+                        ✓ Подтверждено
+                    </span>
+                    <span v-else class="status-badge status-unverified">
+                        ✗ Не подтверждено
+                    </span>
+                </div>
+            </div>
+
+            <div v-if="emailVerificationStatus && !emailVerificationStatus.is_verified" class="info-box warning">
+                ⚠️ <strong>Важно:</strong> Подтверждение email повышает безопасность вашего аккаунта. 
+                <a href="#" @click.prevent="verifyEmailNow" style="color: #667eea; text-decoration: underline;">Подтвердить сейчас</a>
+            </div>
+
+            <div v-if="emailVerificationStatus && emailVerificationStatus.is_verified" class="info-box">
+                ✓ Ваш email подтвержден. Это повышает безопасность вашего аккаунта.
+            </div>
+        </div>
+    </div>
+
+    <!-- Change Password Section -->
+    <div class="security-container">
+        <div class="security-section">
+            <h3 class="security-section-title">
+                <span class="icon">🔑</span>
+                Смена пароля
+            </h3>
+
+            <form @submit.prevent="changePassword">
+                <div class="info-box">
+                    💡 Используйте надёжный пароль с прописными, строчными буквами, цифрами и спецсимволами.
+                </div>
+
+                <div class="form-group">
+                    <label for="current-password">Текущий пароль *</label>
+                    <input 
+                        type="password" 
+                        id="current-password"
+                        v-model="passwordForm.currentPassword"
+                        placeholder="Введите текущий пароль"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="new-password">Новый пароль *</label>
+                    <input 
+                        type="password" 
+                        id="new-password"
+                        v-model="passwordForm.newPassword"
+                        @input="updatePasswordStrength"
+                        placeholder="Введите новый пароль"
+                        required>
+                    <div class="password-strength-container" id="password-strength-container"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirm-password">Подтвердите новый пароль *</label>
+                    <input 
+                        type="password" 
+                        id="confirm-password"
+                        v-model="passwordForm.confirmPassword"
+                        placeholder="Повторите новый пароль"
+                        required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-cancel" @click="resetPasswordForm">Отмена</button>
+                    <button type="submit" class="btn-save" :disabled="isChangingPassword">
+                        {{ isChangingPassword ? '⏳ Смена...' : '💾 Смена пароля' }}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Account Status Section -->
+    <div class="security-container">
+        <div class="security-section">
+            <h3 class="security-section-title">
+                <span class="icon">⚙️</span>
+                Статус аккаунта
+            </h3>
+
+            <div class="security-row">
+                <div class="security-label">
+                    <span class="security-label-title">Пользователь</span>
+                    <span class="security-label-hint">ID: {{ currentUser.id }}</span>
+                </div>
+                <span>{{ currentUser.username }}</span>
+            </div>
+
+            <div class="security-row">
+                <div class="security-label">
+                    <span class="security-label-title">Роль</span>
+                    <span class="security-label-hint">Уровень доступа</span>
+                </div>
+                <span>{{ getRoleDisplayName(currentUser.role) }}</span>
+            </div>
+
+            <div class="security-row">
+                <div class="security-label">
+                    <span class="security-label-title">Статус</span>
+                    <span class="security-label-hint">Активность аккаунта</span>
+                </div>
+                <div class="security-status">
+                    <span v-if="currentUser.is_active" class="status-badge status-active">
+                        ✓ Активен
+                    </span>
+                    <span v-else class="status-badge status-unverified">
+                        ✗ Неактивен
+                    </span>
+                </div>
+            </div>
+
+            <div v-if="accountStatus" class="security-row">
+                <div class="security-label">
+                    <span class="security-label-title">Последний вход</span>
+                    <span class="security-label-hint">Время последней авторизации</span>
+                </div>
+                <span>{{ formatDate(accountStatus.last_login) }}</span>
+            </div>
+
+            <div v-if="accountStatus && accountStatus.failed_attempts" class="security-row">
+                <div class="security-label">
+                    <span class="security-label-title">Неудачные попытки входа</span>
+                    <span class="security-label-hint">Попытки входа за последний час</span>
+                </div>
+                <span>{{ accountStatus.failed_attempts }} / 5</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Login Activity -->
+    <div class="security-container">
+        <div class="security-section">
+            <h3 class="security-section-title">
+                <span class="icon">📱</span>
+                Последние входы
+            </h3>
+
+            <div v-if="isLoadingLoginHistory" style="text-align: center; padding: 20px; color: #999;">
+                ⏳ Загрузка...
+            </div>
+
+            <div v-else-if="loginHistory.length === 0" class="no-data">
+                <p>📭 История входов отсутствует</p>
+            </div>
+
+            <div v-else class="login-history">
+                <div v-for="login in loginHistory" :key="login.id" class="login-item">
+                    <span class="login-item-time">{{ formatDate(login.timestamp) }}</span>
+                    <span class="login-item-ip">🌐 {{ login.ip_address }}</span>
+                    <span :class="`login-item-status ${login.status}`">
+                        {{ login.status === 'success' ? 'Успешно' : 'Ошибка' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div v-if="notification" :class="`notification ${notification.type}`">
+        {{ notification.message }}
+    </div>
+</div>
+
+<script type="module">
+import ApiClient from '../api-client.js';
+import '../js/error-handler.js';
+import '../components/password-strength.js';
+import '../components/email-verification.js';
+
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            apiClient: null,
+            currentUser: null,
+            emailVerificationStatus: null,
+            accountStatus: null,
+            loginHistory: [],
+            passwordForm: {
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            },
+            isChangingPassword: false,
+            isLoadingLoginHistory: true,
+            notification: null
+        };
+    },
+
+    methods: {
+        async loadSecurityInfo() {
+            try {
+                // Load user data from localStorage
+                const savedUser = localStorage.getItem('cms_current_user');
+                if (savedUser) {
+                    this.currentUser = JSON.parse(savedUser);
+                }
+
+                // Load email verification status
+                try {
+                    this.emailVerificationStatus = await this.apiClient.getEmailVerificationStatus();
+                } catch (error) {
+                    console.warn('Could not load email verification status:', error);
+                }
+
+                // Load audit logs to get login history
+                try {
+                    const response = await this.apiClient.getAuditLogs({
+                        limit: 20,
+                        offset: 0
+                    });
+                    const allLogs = response.data || response || [];
+                    
+                    // Filter for LOGIN actions for current user
+                    this.loginHistory = allLogs
+                        .filter(log => log.action === 'LOGIN' && log.username === this.currentUser.username)
+                        .map(log => ({
+                            id: log.id,
+                            timestamp: log.timestamp,
+                            ip_address: log.ip_address,
+                            status: log.severity === 'LOW' ? 'success' : 'failed'
+                        }));
+                } catch (error) {
+                    console.warn('Could not load login history:', error);
+                }
+            } catch (error) {
+                console.error('Error loading security info:', error);
+                this.showNotification('Ошибка загрузки данных безопасности', 'error');
+            } finally {
+                this.isLoadingLoginHistory = false;
+            }
+        },
+
+        updatePasswordStrength() {
+            if (window.PasswordStrengthIndicator && this.passwordForm.newPassword) {
+                window.PasswordStrengthIndicator.update(this.passwordForm.newPassword);
+            } else if (window.PasswordStrengthIndicator && !this.passwordForm.newPassword) {
+                window.PasswordStrengthIndicator.reset();
+            }
+        },
+
+        initPasswordStrengthComponent() {
+            if (window.PasswordStrengthIndicator) {
+                const container = document.getElementById('password-strength-container');
+                if (container && !container.querySelector('.password-strength')) {
+                    fetch('../components/password-strength.html')
+                        .then(response => response.text())
+                        .then(html => {
+                            container.innerHTML = html;
+                            if (this.passwordForm.newPassword) {
+                                window.PasswordStrengthIndicator.update(this.passwordForm.newPassword);
+                            } else {
+                                window.PasswordStrengthIndicator.reset();
+                            }
+                        })
+                        .catch(error => console.error('Error loading password strength component:', error));
+                }
+            }
+        },
+
+        async changePassword() {
+            if (!this.passwordForm.currentPassword || !this.passwordForm.newPassword || !this.passwordForm.confirmPassword) {
+                this.showNotification('Заполните все поля', 'error');
+                return;
+            }
+
+            if (this.passwordForm.newPassword !== this.passwordForm.confirmPassword) {
+                this.showNotification('Пароли не совпадают', 'error');
+                return;
+            }
+
+            if (this.passwordForm.newPassword.length < 8) {
+                this.showNotification('Пароль должен содержать минимум 8 символов', 'error');
+                return;
+            }
+
+            // Check password strength
+            if (window.PasswordStrengthIndicator && !window.PasswordStrengthIndicator.isValid()) {
+                this.showNotification('Пароль недостаточно защищён', 'error');
+                return;
+            }
+
+            this.isChangingPassword = true;
+            try {
+                const response = await this.apiClient.validatePassword(
+                    this.passwordForm.newPassword,
+                    this.currentUser.id
+                );
+
+                if (response.valid || response.success) {
+                    // In a real implementation, you would call an API endpoint to change password
+                    this.showNotification('Пароль успешно изменён', 'success');
+                    this.resetPasswordForm();
+                } else {
+                    this.showNotification('Ошибка при смене пароля: ' + (response.message || 'Неизвестная ошибка'), 'error');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                this.showNotification('Ошибка: ' + error.message, 'error');
+            } finally {
+                this.isChangingPassword = false;
+            }
+        },
+
+        resetPasswordForm() {
+            this.passwordForm = {
+                currentPassword: '',
+                newPassword: '',
+                confirmPassword: ''
+            };
+            if (window.PasswordStrengthIndicator) {
+                window.PasswordStrengthIndicator.reset();
+            }
+        },
+
+        async verifyEmailNow() {
+            if (window.EmailVerificationComponent) {
+                await window.EmailVerificationComponent.open(this.currentUser.email);
+            }
+        },
+
+        formatDate(dateString) {
+            if (!dateString) return '—';
+            const date = new Date(dateString);
+            return date.toLocaleString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        },
+
+        getRoleDisplayName(role) {
+            const roleNames = {
+                'super_admin': 'Супер-админ',
+                'admin': 'Администратор',
+                'editor': 'Редактор',
+                'viewer': 'Наблюдатель'
+            };
+            return roleNames[role] || role;
+        },
+
+        showNotification(message, type) {
+            this.notification = { message, type };
+            setTimeout(() => {
+                this.notification = null;
+            }, 3000);
+        }
+    },
+
+    async mounted() {
+        this.apiClient = new ApiClient();
+        this.$nextTick(() => {
+            this.initPasswordStrengthComponent();
+        });
+        await this.loadSecurityInfo();
+    }
+}).mount('#app');
+</script>
+
+</body>
+</html>

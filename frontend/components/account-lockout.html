@@ -1,0 +1,240 @@
+<div class="account-lockout-modal">
+    <div class="lockout-card">
+        <div class="lockout-header">
+            <div class="lockout-icon">🔒</div>
+            <h2>Аккаунт временно заблокирован</h2>
+        </div>
+        
+        <div class="lockout-content">
+            <p class="lockout-message">
+                Ваш аккаунт был временно заблокирован из-за слишком большого количества 
+                неудачных попыток входа.
+            </p>
+            
+            <div class="lockout-timer">
+                <div class="timer-label">Разблокировка через:</div>
+                <div class="timer-value" id="lockout-timer">--:--</div>
+            </div>
+            
+            <div class="lockout-info">
+                <h3>Почему это произошло?</h3>
+                <p>
+                    Для защиты вашего аккаунта мы временно блокируем доступ после 
+                    нескольких неудачных попыток входа.
+                </p>
+                
+                <h3>Что делать?</h3>
+                <ul>
+                    <li>Подождите указанное время</li>
+                    <li>Убедитесь, что используете правильный пароль</li>
+                    <li>Если забыли пароль, свяжитесь с администратором</li>
+                </ul>
+            </div>
+            
+            <div class="lockout-actions">
+                <button type="button" class="btn-understand" id="btn-understand">
+                    Понятно
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .account-lockout-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        font-family: var(--font-heading, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif);
+        backdrop-filter: blur(4px);
+    }
+    
+    .account-lockout-modal.active {
+        display: flex;
+    }
+    
+    .lockout-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 500px;
+        width: 90%;
+        overflow: hidden;
+        animation: lockoutSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    @keyframes lockoutSlideIn {
+        from {
+            transform: translateY(-50px) scale(0.9);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+        }
+    }
+    
+    .lockout-header {
+        background: linear-gradient(135deg, #c92a2a 0%, #d63031 100%);
+        color: white;
+        padding: 30px 25px;
+        text-align: center;
+    }
+    
+    .lockout-icon {
+        font-size: 64px;
+        margin-bottom: 15px;
+        animation: lockShake 0.6s ease-in-out;
+    }
+    
+    @keyframes lockShake {
+        0%, 100% { transform: rotate(0deg); }
+        25% { transform: rotate(-10deg); }
+        75% { transform: rotate(10deg); }
+    }
+    
+    .lockout-header h2 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+    }
+    
+    .lockout-content {
+        padding: 30px 25px;
+    }
+    
+    .lockout-message {
+        margin: 0 0 25px 0;
+        font-size: 15px;
+        color: #555;
+        line-height: 1.6;
+        text-align: center;
+    }
+    
+    .lockout-timer {
+        background: #fff5f5;
+        border: 2px solid #ffb3b3;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+        text-align: center;
+    }
+    
+    .timer-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #c92a2a;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .timer-value {
+        font-size: 48px;
+        font-weight: 700;
+        color: #c92a2a;
+        font-family: 'Monaco', 'Courier New', monospace;
+        letter-spacing: 4px;
+    }
+    
+    .lockout-info {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+    
+    .lockout-info h3 {
+        margin: 0 0 10px 0;
+        font-size: 14px;
+        font-weight: 700;
+        color: #333;
+    }
+    
+    .lockout-info h3:not(:first-child) {
+        margin-top: 20px;
+    }
+    
+    .lockout-info p {
+        margin: 0 0 10px 0;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.6;
+    }
+    
+    .lockout-info ul {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 13px;
+        color: #666;
+        line-height: 1.8;
+    }
+    
+    .lockout-info li {
+        margin-bottom: 5px;
+    }
+    
+    .lockout-actions {
+        text-align: center;
+    }
+    
+    .btn-understand {
+        padding: 12px 32px;
+        background: #c92a2a;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    
+    .btn-understand:hover {
+        background: #a61e1e;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(201, 42, 42, 0.4);
+    }
+    
+    .btn-understand:active {
+        transform: translateY(0);
+    }
+    
+    .btn-understand:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+    
+    @media (max-width: 480px) {
+        .lockout-card {
+            width: 95%;
+        }
+        
+        .lockout-header {
+            padding: 25px 20px;
+        }
+        
+        .lockout-content {
+            padding: 25px 20px;
+        }
+        
+        .lockout-icon {
+            font-size: 48px;
+        }
+        
+        .lockout-header h2 {
+            font-size: 18px;
+        }
+        
+        .timer-value {
+            font-size: 36px;
+        }
+    }
+</style>

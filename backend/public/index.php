@@ -187,6 +187,45 @@ try {
         $controller = new \Presentation\Controller\UserController();
         $controller->delete($matches[1]);
     }
+    // Security Features: Audit Logs
+    elseif (preg_match('#^/api/audit-logs$#', $uri) && $method === 'GET') {
+        $controller = new \Presentation\Controller\AuditLogController();
+        $controller->index();
+    }
+    elseif (preg_match('#^/api/audit-logs/([a-f0-9-]+)$#', $uri, $matches) && $method === 'GET') {
+        $controller = new \Presentation\Controller\AuditLogController();
+        $controller->show($matches[1]);
+    }
+    elseif (preg_match('#^/api/audit-logs/critical$#', $uri) && $method === 'GET') {
+        $controller = new \Presentation\Controller\AuditLogController();
+        $controller->critical();
+    }
+    // Security Features: Email Verification
+    elseif (preg_match('#^/api/verify-email$#', $uri) && $method === 'POST') {
+        $controller = new \Presentation\Controller\EmailVerificationController();
+        $controller->verify();
+    }
+    elseif (preg_match('#^/api/verify-email/([a-f0-9-]+)$#', $uri, $matches) && $method === 'GET') {
+        $controller = new \Presentation\Controller\EmailVerificationController();
+        $controller->verifyByLink($matches[1]);
+    }
+    elseif (preg_match('#^/api/resend-verification-email$#', $uri) && $method === 'POST') {
+        $controller = new \Presentation\Controller\EmailVerificationController();
+        $controller->resend();
+    }
+    elseif (preg_match('#^/api/email-verification-status$#', $uri) && $method === 'GET') {
+        $controller = new \Presentation\Controller\EmailVerificationController();
+        $controller->status();
+    }
+    // Security Features: Password Validation
+    elseif (preg_match('#^/api/validate-password$#', $uri) && $method === 'POST') {
+        $controller = new \Presentation\Controller\PasswordValidationController();
+        $controller->validate();
+    }
+    elseif (preg_match('#^/api/check-password-requirements$#', $uri) && $method === 'POST') {
+        $controller = new \Presentation\Controller\PasswordValidationController();
+        $controller->checkRequirements();
+    }
     // Media
     elseif (preg_match('#^/api/media$#', $uri) && $method === 'GET') {
         $controller = new \Presentation\Controller\MediaController();

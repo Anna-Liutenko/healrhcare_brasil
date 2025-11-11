@@ -4,6 +4,7 @@
  */
 
 import { toPlainObject, blockToAPI, blockFromAPI } from './utils/mappers.js';
+import csrfHandler from './js/csrf-handler.js';
 
 // Определяем путь к API в зависимости от окружения
 // Production: Apache/XAMPP на localhost:80
@@ -82,6 +83,11 @@ class ApiClient {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
 
+        // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
+        if (csrfHandler.isProtectedMethod(method)) {
+            csrfHandler.addTokenToHeaders(headers);
+        }
+
         let body = options.body;
         if (body && headers['Content-Type'] === 'application/json' && typeof body !== 'string') {
             body = JSON.stringify(body);
@@ -124,15 +130,59 @@ class ApiClient {
             console.log(`[API ${requestId}] ← ${response.status}`, data);
             this.log('success', `[API ${requestId}] ← ${response.status} ${endpoint}`, data);
 
+            // Handle rate limiting (429 Too Many Requests)
+            if (response.status === 429) {
+                const retryAfter = response.headers.get('Retry-After') || data?.retry_after || 60;
+                const error = new Error(`Rate limit exceeded. Try again in ${retryAfter} seconds`);
+                error.code = 'RATE_LIMITED';
+                error.status = 429;
+                error.retryAfter = retryAfter;
+                this.log('error', `[API ${requestId}] ⏱ Rate limited`, { retryAfter });
+                
+                // Trigger error handler
+                if (window.errorHandler) {
+                    window.errorHandler.handle(error, endpoint);
+                }
+                throw error;
+            }
+
+            // Handle account lockout (403 with lockout details)
+            if (response.status === 403 && (data?.locked || data?.account_locked || data?.error?.includes('locked'))) {
+                const unlockAt = data?.unlock_at || data?.data?.unlock_at;
+                const timeRemaining = data?.time_remaining || data?.data?.time_remaining || 900; // Default 15 min
+                const error = new Error(data?.message || 'Account temporarily locked');
+                error.code = 'ACCOUNT_LOCKED';
+                error.status = 403;
+                error.unlock_at = unlockAt;
+                error.time_remaining = timeRemaining;
+                error.details = data;
+                this.log('error', `[API ${requestId}] 🔒 Account locked`, { unlockAt, timeRemaining });
+                
+                // Trigger error handler
+                if (window.errorHandler) {
+                    window.errorHandler.handle(error, endpoint);
+                }
+                throw error;
+            }
+
             if (!response.ok) {
                 const errorMessage = data?.error?.message || data?.error || data?.message || `HTTP ${response.status}`;
                 const error = new Error(errorMessage);
+                error.status = response.status;
+                error.code = data?.code || null;
                 error.details = data?.error?.details || data;
                 this.log('error', `[API ${requestId}] ✖ ${endpoint}`, {
                     status: response.status,
+                    code: error.code,
                     message: errorMessage,
                     details: error.details || null
+
                 });
+                
+                // Trigger error handler for other errors
+                if (window.errorHandler) {
+                    window.errorHandler.handle(error, endpoint);
+                }
                 throw error;
             }
             
@@ -553,6 +603,135 @@ class ApiClient {
         return await this.request('/api/menu/reorder', {
             method: 'PUT',
             body: { items }
+        });
+    }
+
+    // ===== SECURITY ENDPOINTS (ETAP 5) =====
+
+    /**
+     * Check password strength in real-time
+     * POST /api/check-password-requirements
+     * @param {string} password - Password to check
+     * @returns {Promise<Object>} Requirements status
+     */
+    async checkPasswordRequirements(password) {
+        return await this.request('/api/check-password-requirements', {
+            method: 'POST',
+            body: { password }
+        });
+    }
+
+    /**
+     * Validate password fully
+     * POST /api/validate-password
+     * @param {string} password - Password to validate
+     * @param {string} userId - User ID (for history check)
+     * @returns {Promise<Object>} Validation result
+     */
+    async validatePassword(password, userId = null) {
+        return await this.request('/api/validate-password', {
+            method: 'POST',
+            body: { password, user_id: userId }
+        });
+    }
+
+    /**
+     * Get email verification status
+     * GET /api/email-verification-status
+     * @returns {Promise<Object>} Email verification status
+     */
+    async getEmailVerificationStatus() {
+        return await this.request('/api/email-verification-status', {
+            method: 'GET'
+        });
+    }
+
+    /**
+     * Verify email with token
+     * POST /api/verify-email
+     * @param {string} token - Verification token
+     * @returns {Promise<Object>} Verification result
+     */
+    async verifyEmail(token) {
+        return await this.request('/api/verify-email', {
+            method: 'POST',
+            body: { token }
+        });
+    }
+
+    /**
+     * Verify email via link (no auth required)
+     * GET /api/verify-email/:token
+     * @param {string} token - Verification token
+     * @returns {Promise<Object>} Verification result
+     */
+    async verifyEmailByLink(token) {
+        return await this.request(`/api/verify-email/${token}`, {
+            method: 'GET'
+        });
+    }
+
+    /**
+     * Resend verification email
+     * POST /api/resend-verification-email
+     * @returns {Promise<Object>} Resend result
+     */
+    async resendVerificationEmail() {
+        return await this.request('/api/resend-verification-email', {
+            method: 'POST',
+            body: {}
+        });
+    }
+
+    /**
+     * Get audit logs (admin only)
+     * GET /api/audit-logs
+     * @param {Object} filters - Filter options {page, limit, action, admin_user_id}
+     * @returns {Promise<Object>} Audit logs list
+     */
+    async getAuditLogs(filters = {}) {
+        const params = new URLSearchParams();
+        if (filters.page) params.append('page', filters.page);
+        if (filters.limit) params.append('limit', filters.limit);
+        if (filters.action) params.append('action', filters.action);
+        if (filters.admin_user_id) params.append('admin_user_id', filters.admin_user_id);
+
+        const queryString = params.toString();
+        const endpoint = queryString ? `/api/audit-logs?${queryString}` : '/api/audit-logs';
+
+        return await this.request(endpoint, {
+            method: 'GET'
+        });
+    }
+
+    /**
+     * Get single audit log (admin only)
+     * GET /api/audit-logs/:id
+     * @param {string} id - Audit log ID
+     * @returns {Promise<Object>} Audit log details
+     */
+    async getAuditLog(id) {
+        return await this.request(`/api/audit-logs/${id}`, {
+            method: 'GET'
+        });
+    }
+
+    /**
+     * Get critical audit logs (admin only)
+     * GET /api/audit-logs/critical
+     * @param {Object} filters - Filter options {page, limit}
+     * @returns {Promise<Object>} Critical audit logs
+     */
+    async getCriticalAuditLogs(filters = {}) {
+        const params = new URLSearchParams();
+        if (filters.page) params.append('page', filters.page);
+        if (filters.limit) params.append('limit', filters.limit);
+
+        const queryString = params.toString();
+        const endpoint = queryString ? `/api/audit-logs/critical?${queryString}` : '/api/audit-logs/critical';
+
+        return await this.request(endpoint, {
+            method: 'GET'
         });
     }
 }

@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Журнал аудита - Healthcare Brazil CMS</title>
+
+    <link rel="stylesheet" href="../styles/main.css" crossorigin="anonymous">
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #f5f7fa;
+            font-family: var(--font-heading);
+        }
+
+        [v-cloak] { display: none; }
+
+        .audit-logs-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .audit-header {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .audit-header h1 {
+            margin: 0 0 20px 0;
+            font-size: 28px;
+            color: #333;
+        }
+
+        .audit-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .audit-search {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .audit-search input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .audit-search input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .audit-filters {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .filter-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            white-space: nowrap;
+        }
+
+        .filter-group select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+        }
+
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .audit-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-export {
+            padding: 10px 16px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-export:hover {
+            background: #e8e8e8;
+            border-color: #ccc;
+        }
+
+        .btn-refresh {
+            padding: 10px 16px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-refresh:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-refresh:active {
+            transform: translateY(0);
+        }
+
+        .btn-refresh.loading {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .audit-table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .audit-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .audit-table thead {
+            background: #f8f9fa;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .audit-table th {
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .audit-table tbody tr {
+            border-bottom: 1px solid #e9ecef;
+            transition: background 0.2s;
+        }
+
+        .audit-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .audit-table td {
+            padding: 12px 15px;
+            color: #666;
+        }
+
+        .audit-action-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .action-create {
+            background: #c3fae8;
+            color: #2b8a3e;
+        }
+
+        .action-update {
+            background: #bfefff;
+            color: #0055b8;
+        }
+
+        .action-delete {
+            background: #ffe0e0;
+            color: #c92a2a;
+        }
+
+        .action-login {
+            background: #fff3bf;
+            color: #856404;
+        }
+
+        .action-logout {
+            background: #f1f3f5;
+            color: #495057;
+        }
+
+        .severity-critical {
+            color: #c92a2a;
+            font-weight: 600;
+        }
+
+        .severity-high {
+            color: #f59f00;
+            font-weight: 600;
+        }
+
+        .severity-medium {
+            color: #1971c2;
+        }
+
+        .severity-low {
+            color: #757575;
+        }
+
+        .audit-timestamp {
+            color: #999;
+            white-space: nowrap;
+            font-size: 12px;
+        }
+
+        .audit-ip {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .audit-loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+
+        .audit-loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e9ecef;
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 0.6s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .audit-empty {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .audit-empty-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        .audit-pagination {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            flex-wrap: wrap;
+        }
+
+        .pagination-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            color: #555;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pagination-btn:hover:not(:disabled) {
+            background: #f0f0f0;
+            border-color: #ccc;
+        }
+
+        .pagination-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination-info {
+            padding: 8px 12px;
+            color: #666;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            animation: slideInRight 0.3s ease-out;
+            z-index: 1000;
+        }
+
+        .notification.success {
+            border-left: 4px solid #48bb78;
+            color: #22543d;
+        }
+
+        .notification.error {
+            border-left: 4px solid #f56565;
+            color: #742a2a;
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 768px) {
+            .audit-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .audit-filters {
+                flex-direction: column;
+            }
+
+            .filter-group {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filter-group select {
+                width: 100%;
+            }
+
+            .audit-table {
+                font-size: 12px;
+            }
+
+            .audit-table th,
+            .audit-table td {
+                padding: 8px 10px;
+            }
+
+            .audit-pagination {
+                padding: 15px 10px;
+            }
+        }
+    </style>
+</head>
+<body v-cloak>
+
+<div id="app">
+    <!-- Back link -->
+    <div class="audit-logs-container" style="padding-top: 10px; padding-bottom: 0;">
+        <a href="index.html" class="back-link">← Вернуться в админ-панель</a>
+    </div>
+
+    <!-- Header -->
+    <div class="audit-logs-container">
+        <div class="audit-header">
+            <h1>📋 Журнал аудита</h1>
+            
+            <div class="audit-controls">
+                <div class="audit-search">
+                    <input 
+                        type="text" 
+                        v-model="searchQuery"
+                        placeholder="🔍 Поиск по пользователю, действию, IP...">
+                </div>
+
+                <div class="audit-filters">
+                    <div class="filter-group">
+                        <label for="filter-action">Действие:</label>
+                        <select id="filter-action" v-model="filterAction">
+                            <option value="">Все</option>
+                            <option value="CREATE">Создание</option>
+                            <option value="UPDATE">Обновление</option>
+                            <option value="DELETE">Удаление</option>
+                            <option value="LOGIN">Вход</option>
+                            <option value="LOGOUT">Выход</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="filter-severity">Серьёзность:</label>
+                        <select id="filter-severity" v-model="filterSeverity">
+                            <option value="">Все</option>
+                            <option value="CRITICAL">Критическая</option>
+                            <option value="HIGH">Высокая</option>
+                            <option value="MEDIUM">Средняя</option>
+                            <option value="LOW">Низкая</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="audit-actions">
+                    <button class="btn-export" @click="exportLogs" title="Экспортировать в CSV">
+                        📥 CSV
+                    </button>
+                    <button 
+                        class="btn-refresh" 
+                        @click="loadAuditLogs"
+                        :class="{ loading: isLoading }"
+                        :disabled="isLoading"
+                        title="Обновить">
+                        🔄 Обновить
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Logs Table -->
+    <div class="audit-logs-container">
+        <div class="audit-table-container">
+            <div v-if="isLoading" class="audit-loading">
+                <div class="audit-loading-spinner"></div>
+                Загрузка логов аудита...
+            </div>
+
+            <div v-else-if="filteredLogs.length === 0" class="audit-empty">
+                <div class="audit-empty-icon">📭</div>
+                <p>Нет записей в журнале аудита</p>
+            </div>
+
+            <table v-else class="audit-table">
+                <thead>
+                    <tr>
+                        <th>Время</th>
+                        <th>Пользователь</th>
+                        <th>Действие</th>
+                        <th>Ресурс</th>
+                        <th>Серьёзность</th>
+                        <th>IP адрес</th>
+                        <th>Детали</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="log in paginatedLogs" :key="log.id">
+                        <td class="audit-timestamp">{{ formatDate(log.timestamp) }}</td>
+                        <td>{{ log.username || log.user_id || '—' }}</td>
+                        <td>
+                            <span :class="`audit-action-badge action-${log.action.toLowerCase()}`">
+                                {{ translateAction(log.action) }}
+                            </span>
+                        </td>
+                        <td>{{ log.resource_type }} #{{ log.resource_id }}</td>
+                        <td>
+                            <span :class="`severity-${log.severity}`">
+                                {{ translateSeverity(log.severity) }}
+                            </span>
+                        </td>
+                        <td class="audit-ip">{{ log.ip_address }}</td>
+                        <td style="color: #667eea; cursor: pointer;" @click="showDetails(log)">
+                            {{ log.details ? 'Показать' : '—' }}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div v-if="filteredLogs.length > 0" class="audit-pagination">
+                <button 
+                    class="pagination-btn"
+                    @click="currentPage = 1"
+                    :disabled="currentPage === 1">
+                    « Первая
+                </button>
+
+                <button 
+                    class="pagination-btn"
+                    @click="currentPage--"
+                    :disabled="currentPage === 1">
+                    ‹ Предыдущая
+                </button>
+
+                <div class="pagination-info">
+                    Страница {{ currentPage }} из {{ totalPages }}
+                </div>
+
+                <button 
+                    class="pagination-btn"
+                    @click="currentPage++"
+                    :disabled="currentPage === totalPages">
+                    Следующая ›
+                </button>
+
+                <button 
+                    class="pagination-btn"
+                    @click="currentPage = totalPages"
+                    :disabled="currentPage === totalPages">
+                    Последняя »
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div v-if="notification" :class="`notification ${notification.type}`">
+        {{ notification.message }}
+    </div>
+</div>
+
+<script type="module">
+import ApiClient from '../api-client.js';
+import '../js/error-handler.js';
+
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            apiClient: null,
+            auditLogs: [],
+            filteredLogs: [],
+            isLoading: true,
+            searchQuery: '',
+            filterAction: '',
+            filterSeverity: '',
+            currentPage: 1,
+            pageSize: 20,
+            notification: null,
+        };
+    },
+
+    computed: {
+        totalPages() {
+            return Math.ceil(this.filteredLogs.length / this.pageSize);
+        },
+
+        paginatedLogs() {
+            const start = (this.currentPage - 1) * this.pageSize;
+            const end = start + this.pageSize;
+            return this.filteredLogs.slice(start, end);
+        }
+    },
+
+    watch: {
+        searchQuery() {
+            this.currentPage = 1;
+            this.applyFilters();
+        },
+
+        filterAction() {
+            this.currentPage = 1;
+            this.applyFilters();
+        },
+
+        filterSeverity() {
+            this.currentPage = 1;
+            this.applyFilters();
+        }
+    },
+
+    methods: {
+        async loadAuditLogs() {
+            this.isLoading = true;
+            try {
+                const response = await this.apiClient.getAuditLogs({
+                    limit: 1000,
+                    offset: 0
+                });
+
+                this.auditLogs = response.data || response || [];
+                this.applyFilters();
+                this.showNotification('Логи загружены', 'success');
+            } catch (error) {
+                console.error('Error loading audit logs:', error);
+                this.showNotification('Ошибка загрузки логов: ' + error.message, 'error');
+            } finally {
+                this.isLoading = false;
+            }
+        },
+
+        applyFilters() {
+            let filtered = this.auditLogs;
+
+            // Search filter
+            if (this.searchQuery) {
+                const q = this.searchQuery.toLowerCase();
+                filtered = filtered.filter(log => {
+                    return (log.username && log.username.toLowerCase().includes(q)) ||
+                           (log.action && log.action.toLowerCase().includes(q)) ||
+                           (log.ip_address && log.ip_address.includes(q)) ||
+                           (log.resource_type && log.resource_type.toLowerCase().includes(q));
+                });
+            }
+
+            // Action filter
+            if (this.filterAction) {
+                filtered = filtered.filter(log => log.action === this.filterAction);
+            }
+
+            // Severity filter
+            if (this.filterSeverity) {
+                filtered = filtered.filter(log => log.severity === this.filterSeverity);
+            }
+
+            this.filteredLogs = filtered;
+        },
+
+        formatDate(dateString) {
+            if (!dateString) return '—';
+            const date = new Date(dateString);
+            return date.toLocaleString('ru-RU', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        },
+
+        translateAction(action) {
+            const translations = {
+                'CREATE': '➕ Создано',
+                'UPDATE': '✏️ Обновлено',
+                'DELETE': '🗑️ Удалено',
+                'LOGIN': '🔓 Вход',
+                'LOGOUT': '🔒 Выход'
+            };
+            return translations[action] || action;
+        },
+
+        translateSeverity(severity) {
+            const translations = {
+                'CRITICAL': '🔴 Критическая',
+                'HIGH': '🟠 Высокая',
+                'MEDIUM': '🟡 Средняя',
+                'LOW': '🟢 Низкая'
+            };
+            return translations[severity] || severity;
+        },
+
+        showDetails(log) {
+            if (log.details) {
+                alert('Детали:\n' + (typeof log.details === 'string' ? log.details : JSON.stringify(log.details, null, 2)));
+            }
+        },
+
+        exportLogs() {
+            if (this.filteredLogs.length === 0) {
+                this.showNotification('Нет данных для экспорта', 'error');
+                return;
+            }
+
+            const headers = ['Время', 'Пользователь', 'Действие', 'Ресурс', 'Серьёзность', 'IP адрес'];
+            const rows = this.filteredLogs.map(log => [
+                this.formatDate(log.timestamp),
+                log.username || log.user_id || '—',
+                this.translateAction(log.action),
+                `${log.resource_type} #${log.resource_id}`,
+                this.translateSeverity(log.severity),
+                log.ip_address
+            ]);
+
+            // Create CSV content
+            const csv = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+
+            // Download
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', `audit-logs-${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            this.showNotification('Логи экспортированы', 'success');
+        },
+
+        showNotification(message, type) {
+            this.notification = { message, type };
+            setTimeout(() => {
+                this.notification = null;
+            }, 3000);
+        }
+    },
+
+    async mounted() {
+        this.apiClient = new ApiClient();
+        await this.loadAuditLogs();
+    }
+}).mount('#app');
+</script>
+
+</body>
+</html>

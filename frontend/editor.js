@@ -5,6 +5,9 @@ import { blockToAPI, blockFromAPI, generateSlug, toPlainObject } from './utils/m
 import { renderInlineMarkdown as renderInlineMarkdownUtil } from './utils/renderInlineMarkdown.js';
 import { validateSlug } from './utils/validators.js';
 import InlineEditorManager from './js/InlineEditorManager.js';
+import './js/error-handler.js';
+import './components/email-verification.js';
+import './components/account-lockout.js';
 
 const { createApp } = Vue;
 
@@ -115,6 +118,10 @@ const app = createApp({
 
     async created() {
         this.apiClient = new ApiClient();
+        
+        // Export to global scope for component access
+        window.apiClient = this.apiClient;
+        
         this.apiClient.setLogger((message, type = 'info', payload = null) => {
             this.debugMsg(message, type, payload);
         });
@@ -1522,6 +1529,20 @@ const app = createApp({
                 this.showLoginModal = false;
                 this.showNotification('Вход выполнен', 'success');
                 this.debugMsg('Вход выполнен', 'success', { userId: response.user.id, username: response.user.username });
+
+                // Check email verification status
+                try {
+                    const emailStatus = await this.apiClient.getEmailVerificationStatus();
+                    if (!emailStatus.is_verified) {
+                        this.showNotification('⚠️ Пожалуйста, подтвердите ваш email', 'warning');
+                        // Show email verification modal
+                        if (window.EmailVerificationComponent) {
+                            await window.EmailVerificationComponent.open(emailStatus.email);
+                        }
+                    }
+                } catch (error) {
+                    this.debugMsg('Could not check email verification status', 'warn', { error: error.message });
+                }
 
                 // Проверяем, есть ли ID страницы в URL
                 const urlParams = new URLSearchParams(window.location.search);

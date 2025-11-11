@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificação de Email</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background-color: white;
+            margin: 0 auto;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .verification-button {
+            display: inline-block;
+            background-color: #007bff;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .verification-button:hover {
+            background-color: #0056b3;
+        }
+        .token-section {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+        .token-label {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Verificação de Email</h1>
+        </div>
+
+        <div class="content">
+            <p>Olá {{user_name}},</p>
+            
+            <p>Obrigado por se registrar em nossa plataforma. Para completar seu registro e ativar sua conta, por favor verifique seu endereço de email.</p>
+
+            <a href="{{verification_link}}" class="verification-button">Verificar Email</a>
+
+            <p>Ou copie e cole o token abaixo em seu navegador:</p>
+            
+            <div class="token-section">
+                <div class="token-label">Token de Verificação:</div>
+                <div>{{verification_token}}</div>
+            </div>
+
+            <div class="warning">
+                <strong>⚠️ Importante:</strong> Este link expira em 24 horas. Se você não criou esta conta, ignore este email.
+            </div>
+
+            <p>Se o botão acima não funcionar, copie e cole este link no seu navegador:</p>
+            <p style="word-break: break-all; color: #666; font-size: 12px;">{{verification_link}}</p>
+        </div>
+
+        <div class="footer">
+            <p>© {{current_year}} Expats Health Brazil. Todos os direitos reservados.</p>
+            <p>Este é um email automático. Por favor, não responda.</p>
+        </div>
+    </div>
+</body>
+</html>

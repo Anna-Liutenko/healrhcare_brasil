@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conta Bloqueada</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background-color: white;
+            margin: 0 auto;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #dc3545;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #dc3545;
+            margin: 0;
+            font-size: 24px;
+        }
+        .warning-box {
+            background-color: #f8d7da;
+            border-left: 4px solid #dc3545;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .info-item {
+            background-color: #f8f9fa;
+            padding: 12px;
+            margin: 10px 0;
+            border-left: 3px solid #6c757d;
+            border-radius: 4px;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #dc3545;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .action-button:hover {
+            background-color: #c82333;
+        }
+        .reset-button {
+            background-color: #28a745;
+        }
+        .reset-button:hover {
+            background-color: #218838;
+        }
+        .steps {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .steps ol {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 10px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚠️ Conta Bloqueada</h1>
+        </div>
+
+        <div class="content">
+            <p>Olá {{user_name}},</p>
+            
+            <div class="warning-box">
+                <strong>Sua conta foi temporariamente bloqueada por razões de segurança.</strong>
+            </div>
+
+            <h3>O que aconteceu?</h3>
+            <p>
+                Detectamos múltiplas tentativas de login falhas na sua conta. 
+                Para proteger sua segurança, sua conta foi automaticamente bloqueada 
+                por um período de tempo.
+            </p>
+
+            <h3>Informações do Bloqueio:</h3>
+            <div class="info-item">
+                <strong>Razão:</strong> {{lock_reason}}
+            </div>
+            <div class="info-item">
+                <strong>Data/Hora do Bloqueio:</strong> {{locked_at}}
+            </div>
+            <div class="info-item">
+                <strong>Desbloqueio em:</strong> {{unlock_at}} ({{time_remaining}})
+            </div>
+            <div class="info-item">
+                <strong>Tentativas Falhadas:</strong> {{failed_attempts}} / 5
+            </div>
+
+            <h3>O que fazer?</h3>
+            <div class="steps">
+                <ol>
+                    <li><strong>Aguarde:</strong> Sua conta será desbloqueada automaticamente em {{time_remaining}}</li>
+                    <li><strong>Verifique sua segurança:</strong> Certifique-se que ninguém mais tem acesso à sua conta</li>
+                    <li><strong>Altere sua senha:</strong> Ao desbloquear, altere sua senha para uma nova e segura</li>
+                    <li><strong>Revise sua atividade:</strong> Verifique o histórico de login para atividades suspeitas</li>
+                </ol>
+            </div>
+
+            <h3>Precisa de Ajuda?</h3>
+            <p>
+                {{#allow_early_unlock}}
+                <a href="{{unlock_link}}" class="action-button reset-button">Desbloquear Agora</a>
+                {{/allow_early_unlock}}
+                {{^allow_early_unlock}}
+                Se você é o administrador desta conta ou suspeita de atividade não autorizada, 
+                por favor contacte o suporte imediatamente.
+                {{/allow_early_unlock}}
+            </p>
+
+            <p style="color: #dc3545; font-size: 13px; margin-top: 20px;">
+                <strong>💡 Dica de Segurança:</strong> 
+                Nunca compartilhe sua senha. Se alguém pedir sua senha, 
+                é um sinal de tentativa de fraude. Denuncie ao administrador.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>© {{current_year}} Expats Health Brazil. Todos os direitos reservados.</p>
+            <p>Este é um email automático. Por favor, não responda.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background-color: white;
+            margin: 0 auto;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #28a745;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #28a745;
+            color: white;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .action-button:hover {
+            background-color: #218838;
+        }
+        .features {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+        .features li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        .features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Bem-vindo!</h1>
+        </div>
+
+        <div class="content">
+            <p>Olá {{user_name}},</p>
+            
+            <p>Sua conta foi criada com sucesso! Estamos felizes em tê-lo conosco.</p>
+
+            <p>Agora você pode acessar nossa plataforma com as seguintes funcionalidades:</p>
+
+            <div class="features">
+                <ul>
+                    <li>Gerenciar páginas e conteúdo</li>
+                    <li>Organizar coleções de materiais</li>
+                    <li>Fazer upload e gerenciar mídia</li>
+                    <li>Monitorar atividades (audit logs)</li>
+                    <li>Configurar preferências de segurança</li>
+                </ul>
+            </div>
+
+            <a href="{{dashboard_link}}" class="action-button">Acessar Plataforma</a>
+
+            <p><strong>Informações da sua conta:</strong></p>
+            <ul>
+                <li>Email: {{user_email}}</li>
+                <li>Função: {{user_role}}</li>
+                <li>Data de criação: {{created_at}}</li>
+            </ul>
+
+            <p>Se tiver dúvidas ou precisar de suporte, por favor nos contacte.</p>
+        </div>
+
+        <div class="footer">
+            <p>© {{current_year}} Expats Health Brazil. Todos os direitos reservados.</p>
+            <p>Este é um email automático. Por favor, não responda.</p>
+        </div>
+    </div>
+</body>
+</html>

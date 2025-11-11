@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mudança de Função</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background-color: white;
+            margin: 0 auto;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #ffc107;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            color: #ffc107;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin: 30px 0;
+        }
+        .role-comparison {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .role-box {
+            display: inline-block;
+            width: 45%;
+            padding: 15px;
+            margin: 5px;
+        }
+        .role-old {
+            border-left: 4px solid #dc3545;
+        }
+        .role-new {
+            border-left: 4px solid #28a745;
+        }
+        .role-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .role-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .permissions {
+            background-color: #f8f9fa;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        .permissions-label {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .permission-item {
+            padding: 5px 0;
+            padding-left: 25px;
+            position: relative;
+            font-size: 13px;
+        }
+        .permission-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #ffc107;
+            color: #333;
+            padding: 12px 30px;
+            text-decoration: none;
+            border-radius: 4px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .action-button:hover {
+            background-color: #e0a800;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Mudança de Função</h1>
+        </div>
+
+        <div class="content">
+            <p>Olá {{user_name}},</p>
+            
+            <p>Sua função de acesso foi alterada em nossa plataforma.</p>
+
+            <div class="role-comparison">
+                <div class="role-box role-old">
+                    <div class="role-label">Função Anterior:</div>
+                    <div class="role-value">{{old_role}}</div>
+                </div>
+                <div style="display: inline-block; width: 8%; text-align: center; vertical-align: middle;">→</div>
+                <div class="role-box role-new">
+                    <div class="role-label">Nova Função:</div>
+                    <div class="role-value">{{new_role}}</div>
+                </div>
+            </div>
+
+            <p><strong>Data/Hora da mudança:</strong> {{changed_at}}</p>
+            <p><strong>Alterado por:</strong> {{changed_by}}</p>
+
+            {{#new_permissions}}
+            <div class="permissions">
+                <div class="permissions-label">Suas novas permissões incluem:</div>
+                {{#permissions}}
+                <div class="permission-item">{{permission_name}}</div>
+                {{/permissions}}
+            </div>
+            {{/new_permissions}}
+
+            <a href="{{account_settings_link}}" class="action-button">Ir para Configurações</a>
+
+            <p style="color: #666; font-size: 13px;">
+                <strong>Nota:</strong> Se você tiver dúvidas sobre suas novas permissões ou responsabilidades, 
+                por favor entre em contato com o administrador do sistema.
+            </p>
+        </div>
+
+        <div class="footer">
+            <p>© {{current_year}} Expats Health Brazil. Todos os direitos reservados.</p>
+            <p>Este é um email automático. Por favor, não responda.</p>
+        </div>
+    </div>
+</body>
+</html>

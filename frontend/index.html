@@ -858,6 +858,21 @@
             <h1>Healthcare Brazil CMS</h1>
             <div class="user-info">
                 <span class="user-name">👤 {{ currentUser.username }}</span>
+                <!-- Security Settings -->
+                <a 
+                    href="pages/account-security.html" 
+                    class="btn-manage-users"
+                    title="Безопасность аккаунта">
+                    🔐 Безопасность
+                </a>
+                <!-- Audit Logs (только для super_admin) -->
+                <a 
+                    v-if="currentUser && currentUser.role === 'super_admin'" 
+                    href="pages/audit-logs.html"
+                    class="btn-manage-users" 
+                    title="Журнал аудита">
+                    📋 Аудит
+                </a>
                 <!-- Кнопка управления пользователями (только для super_admin) -->
                 <button 
                     v-if="currentUser && currentUser.role === 'super_admin'" 
@@ -1037,8 +1052,11 @@
                                 v-model="userForm.password" 
                                 type="password" 
                                 placeholder="Минимум 8 символов"
+                                @input="updatePasswordStrength"
                                 :required="!currentEditingUser">
                             <small class="form-hint">Минимум 8 символов.</small>
+                            <!-- Password strength indicator will be inserted here -->
+                            <div id="password-strength-container"></div>
                         </div>
                         
                         <div class="form-group">
@@ -1151,6 +1169,10 @@
 
 <script type="module">
 import ApiClient from './api-client.js';
+import './js/error-handler.js';
+import './components/password-strength.js';
+import './components/email-verification.js';
+import './components/account-lockout.js';
 
 const { createApp } = Vue;
 
@@ -1228,6 +1250,21 @@ createApp({
                     localStorage.setItem('cms_auth_token', response.token);
 
                     this.showNotification('Вход выполнен успешно', 'success');
+                    
+                    // Check email verification status
+                    try {
+                        const emailStatus = await this.apiClient.getEmailVerificationStatus();
+                        if (!emailStatus.is_verified) {
+                            this.showNotification('⚠️ Пожалуйста, подтвердите ваш email', 'warning');
+                            // Show email verification modal
+                            if (window.EmailVerificationComponent) {
+                                await window.EmailVerificationComponent.open(emailStatus.email);
+                            }
+                        }
+                    } catch (error) {
+                        console.warn('Could not check email verification status:', error);
+                    }
+                    
                     await this.loadPages();
                 } else {
                     this.loginError = 'Ошибка входа. Проверьте данные.';
@@ -1425,6 +1462,9 @@ createApp({
             this.currentEditingUser = null;
             this.resetUserForm();
             this.showUserForm = true;
+            this.$nextTick(() => {
+                this.initPasswordStrengthComponent();
+            });
         },
         
         editUser(user) {
@@ -1439,6 +1479,9 @@ createApp({
                 is_active: user.is_active
             };
             this.showUserForm = true;
+            this.$nextTick(() => {
+                this.initPasswordStrengthComponent();
+            });
         },
         
         closeUserForm() {
@@ -1547,9 +1590,46 @@ createApp({
                     this.showNotification('Пароль должен содержать минимум 8 символов', 'error');
                     return false;
                 }
+                
+                // Check password strength if component is available
+                if (window.PasswordStrengthIndicator && !window.PasswordStrengthIndicator.isValid()) {
+                    this.showNotification('Пароль недостаточно защищён. Используйте прописные, строчные буквы, цифры и спецсимволы.', 'error');
+                    return false;
+                }
             }
             
             return true;
+        },
+        
+        updatePasswordStrength() {
+            // Update password strength indicator in real-time
+            if (window.PasswordStrengthIndicator && this.userForm.password) {
+                window.PasswordStrengthIndicator.update(this.userForm.password);
+            } else if (window.PasswordStrengthIndicator && !this.userForm.password) {
+                window.PasswordStrengthIndicator.reset();
+            }
+        },
+        
+        initPasswordStrengthComponent() {
+            // Initialize password strength component when form is shown
+            if (window.PasswordStrengthIndicator) {
+                const container = document.getElementById('password-strength-container');
+                if (container) {
+                    // Load the component HTML
+                    fetch('./components/password-strength.html')
+                        .then(response => response.text())
+                        .then(html => {
+                            container.innerHTML = html;
+                            // Reset to empty state
+                            if (this.userForm.password) {
+                                window.PasswordStrengthIndicator.update(this.userForm.password);
+                            } else {
+                                window.PasswordStrengthIndicator.reset();
+                            }
+                        })
+                        .catch(error => console.error('Error loading password strength component:', error));
+                }
+            }
         },
         
         async deleteUser(userId) {
@@ -1603,6 +1683,9 @@ createApp({
     async mounted() {
         // Initialize API client
         this.apiClient = new ApiClient();
+        
+        // Export to global scope for component access
+        window.apiClient = this.apiClient;
 
         // Check if user is already logged in
         const savedUser = localStorage.getItem('cms_current_user');
