@@ -40,7 +40,7 @@ class EmailService
             $verificationUrl = 'http://localhost/admin/verify-email.html?token=' . $verificationToken;
         }
 
-        $html = $this->renderTemplate('email-verification', [
+        $html = $this->renderTemplate('verification', [
             'verificationUrl' => $verificationUrl,
             'verificationToken' => $verificationToken,
             'expiryHours' => 24,
@@ -56,7 +56,7 @@ class EmailService
     {
         $subject = 'Добро пожаловать в Healthcare CMS';
 
-        $html = $this->renderTemplate('email-welcome', [
+        $html = $this->renderTemplate('welcome', [
             'username' => $username,
             'tempPassword' => $tempPassword,
             'loginUrl' => 'http://localhost/admin',
@@ -72,7 +72,7 @@ class EmailService
     {
         $subject = 'Пароль изменён';
 
-        $html = $this->renderTemplate('email-password-changed', [
+        $html = $this->renderTemplate('password-changed', [
             'username' => $username,
             'timestamp' => date('d.m.Y H:i'),
         ]);
@@ -94,7 +94,7 @@ class EmailService
             'viewer' => 'Просмотрщик',
         ];
 
-        $html = $this->renderTemplate('email-role-changed', [
+        $html = $this->renderTemplate('role-changed', [
             'username' => $username,
             'newRole' => $roleLabels[$newRole] ?? $newRole,
         ]);
@@ -109,7 +109,7 @@ class EmailService
     {
         $subject = 'Аккаунт заблокирован';
 
-        $html = $this->renderTemplate('email-account-locked', [
+        $html = $this->renderTemplate('account-locked', [
             'username' => $username,
             'timestamp' => date('d.m.Y H:i'),
             'contactEmail' => 'admin@healthcare-cms.local',

@@ -13,6 +13,7 @@ use Domain\ValueObject\PasswordPolicy;
 use Domain\ValueObject\EmailVerificationToken;
 use Domain\Entity\AuditLog;
 use Domain\ValueObject\AuditAction;
+use Infrastructure\Service\EmailService;
 use InvalidArgumentException;
 use Exception;
 use Ramsey\Uuid\Uuid;
@@ -29,7 +30,8 @@ class CreateUser
 {
     public function __construct(
         private UserRepositoryInterface $userRepository,
-        private AuditLogRepositoryInterface $auditLogRepository
+        private AuditLogRepositoryInterface $auditLogRepository,
+        private EmailService $emailService
     ) {
     }
 
@@ -117,6 +119,17 @@ class CreateUser
 
         // Save user
         $this->userRepository->save($user);
+
+        // SECURITY: Send email verification email
+        try {
+            $this->emailService->sendVerificationEmail(
+                $user->getEmail(),
+                $emailVerificationToken->getToken()
+            );
+        } catch (Exception $e) {
+            // Логируем ошибку, но не останавливаем создание пользователя
+            error_log("Failed to send verification email to {$user->getEmail()}: " . $e->getMessage());
+        }
 
         // SECURITY: Log user creation in audit trail
         if (!empty($adminUserId)) {
