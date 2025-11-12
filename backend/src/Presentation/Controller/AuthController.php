@@ -8,6 +8,7 @@ use Application\UseCase\Login;
 use Application\UseCase\Logout;
 use Infrastructure\Repository\MySQLUserRepository;
 use Infrastructure\Repository\MySQLSessionRepository;
+use Infrastructure\Repository\MySQLAuditLogRepository;
 use Infrastructure\Middleware\ApiLogger;
 use Infrastructure\Auth\AuthHelper;
 use Infrastructure\Auth\UnauthorizedException;
@@ -45,8 +46,9 @@ class AuthController
 
             $userRepository = new MySQLUserRepository();
             $sessionRepository = new MySQLSessionRepository();
+            $auditLogRepository = new MySQLAuditLogRepository();
 
-            $useCase = new Login($userRepository, $sessionRepository);
+            $useCase = new Login($userRepository, $sessionRepository, $auditLogRepository);
             $result = $useCase->execute($data['username'], $data['password']);
 
             $response = [

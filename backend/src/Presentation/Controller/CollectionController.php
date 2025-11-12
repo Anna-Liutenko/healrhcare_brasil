@@ -60,7 +60,7 @@ class CollectionController
             // Basic validation of UUID-ish id
             if (!preg_match('/^[a-z0-9-]{36}$/i', $pageId)) {
                 http_response_code(400);
-                header('Content-Type: application/json');
+                header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['success' => false, 'error' => 'Invalid page id']);
                 return;
             }
@@ -76,7 +76,7 @@ class CollectionController
             $section = $_GET['section'] ?? null;
             if ($section !== null && !in_array($section, ['guides', 'articles'], true)) {
                 http_response_code(400);
-                header('Content-Type: application/json');
+                header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['success' => false, 'error' => 'Invalid section']);
                 return;
             }
@@ -84,7 +84,7 @@ class CollectionController
             $useCase = new GetCollectionItems($pageRepo, $blockRepo);
             $result = $useCase->execute($pageId, $section, $page, $limit);
             
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => true,
                 'data' => $result
@@ -95,7 +95,7 @@ class CollectionController
                 $code = 400;
             }
             http_response_code($code);
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => false,
                 'error' => $e->getMessage()
@@ -114,7 +114,7 @@ class CollectionController
             // Basic validation
             if (!preg_match('/^[a-z0-9-]{36}$/i', $pageId)) {
                 http_response_code(400);
-                header('Content-Type: application/json');
+                header('Content-Type: application/json; charset=utf-8');
                 echo json_encode(['success' => false, 'error' => 'Invalid page id']);
                 return;
             }
@@ -213,7 +213,7 @@ class CollectionController
                 'outcome' => 'success',
             ]);
 
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => true,
                 'message' => 'Card image updated'
@@ -224,7 +224,7 @@ class CollectionController
                 $code = 400;
             }
             http_response_code($code);
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'success' => false,
                 'error' => $e->getMessage()
