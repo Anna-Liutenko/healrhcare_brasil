@@ -12,6 +12,9 @@ use Domain\Entity\User;
 use Infrastructure\Middleware\ApiLogger;
 use Infrastructure\Repository\MySQLSessionRepository;
 use Infrastructure\Repository\MySQLUserRepository;
+use Infrastructure\Repository\MySQLAuditLogRepository;
+use Infrastructure\Repository\MySQLEmailNotificationRepository;
+use Infrastructure\Service\EmailService;
 use InvalidArgumentException;
 use Infrastructure\Auth\AuthHelper;
 use Infrastructure\Auth\UnauthorizedException;
@@ -79,9 +82,16 @@ class UserController
                 throw new InvalidArgumentException('Request body must be an object');
             }
 
+            // Получаем текущего пользователя (должен быть super_admin)
+            $currentUser = AuthHelper::requireAuth();
+
             $userRepository = new MySQLUserRepository();
-            $useCase = new CreateUser($userRepository);
-            $user = $useCase->execute($data);
+            $auditLogRepository = new MySQLAuditLogRepository();
+            $emailNotificationRepository = new MySQLEmailNotificationRepository();
+            $emailService = new EmailService($emailNotificationRepository);
+
+            $useCase = new CreateUser($userRepository, $auditLogRepository, $emailService);
+            $user = $useCase->execute($data, $currentUser->getId());
 
             $response = [
                 'success' => true,

@@ -7,6 +7,8 @@ namespace Presentation\Controller;
 use Application\UseCase\VerifyUserEmail;
 use Domain\Repository\MySQLUserRepository;
 use Domain\Repository\MySQLAuditLogRepository;
+use Infrastructure\Repository\MySQLEmailNotificationRepository;
+use Infrastructure\Service\EmailService;
 use Infrastructure\Middleware\ApiLogger;
 use Infrastructure\Auth\AuthHelper;
 use Infrastructure\Auth\UnauthorizedException;
@@ -180,12 +182,35 @@ class EmailVerificationController
                 throw new InvalidArgumentException('Email is already verified');
             }
 
-            // Отправляем новый токен верификации
-            // TODO: Реализовать повторную отправку письма через EmailService
+            // Проверяем наличие токена верификации
+            $emailVerificationToken = $user->getEmailVerificationToken();
+            if ($emailVerificationToken === null) {
+                throw new InvalidArgumentException('No verification token found. Please contact support.');
+            }
+
+            // Проверяем, не истёк ли токен
+            if ($emailVerificationToken->isExpired()) {
+                throw new InvalidArgumentException('Verification token has expired. Please contact support to generate a new one.');
+            }
+
+            // Отправляем письмо с токеном верификации
+            $emailNotificationRepository = new MySQLEmailNotificationRepository();
+            $emailService = new EmailService($emailNotificationRepository);
+
+            $sent = $emailService->sendVerificationEmail(
+                $user->getEmail(),
+                $emailVerificationToken->getToken()
+            );
+
+            if (!$sent) {
+                throw new Exception('Failed to send verification email. Please try again later.');
+            }
 
             $response = [
                 'success' => true,
                 'message' => 'Verification email sent',
+                'email' => $user->getEmail(),
+                'expires_at' => $emailVerificationToken->getExpiresAt()->format('Y-m-d H:i:s'),
             ];
 
             ApiLogger::logResponse(200, $response, $startTime);
