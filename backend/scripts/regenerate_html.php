@@ -1,38 +1,34 @@
 #!/usr/bin/env php
 <?php
+declare(strict_types=1);
+
+use Application\UseCase\RenderPageHtml;
+use Domain\ValueObject\PageStatus;
+use Infrastructure\Repository\MySQLBlockRepository;
+use Infrastructure\Repository\MySQLPageRepository;
+
 /**
- * Regenerate rendered_html for all published pages
+ * Regenerate rendered_html for all published pages using the production renderer.
  */
+
+require __DIR__ . '/../vendor/autoload.php';
 
 echo "\n========================================\n";
 echo "Regenerate rendered_html for Pages\n";
 echo "========================================\n\n";
 
-// Get DB connection
 try {
-    $db = new PDO(
-        'mysql:host=localhost;dbname=healthcare_cms',
-        'root',
-        ''
-    );
-    $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    echo "✓ Connected to database\n\n";
-} catch (PDOException $e) {
-    echo "❌ ERROR: Cannot connect to database\n";
-    echo "   " . $e->getMessage() . "\n";
+    $pageRepository = new MySQLPageRepository();
+    $blockRepository = new MySQLBlockRepository();
+    $renderPageHtml = new RenderPageHtml($blockRepository);
+} catch (Throwable $e) {
+    echo "❌ ERROR: Failed to initialise repositories: " . $e->getMessage() . "\n";
     exit(1);
 }
 
-// Get all published pages
-$stmt = $db->query("
-    SELECT id, title, slug, type, blocks
-    FROM pages
-    WHERE status = 'published'
-    ORDER BY type, title
-");
-$pages = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
+$pages = $pageRepository->findByStatus(PageStatus::published());
 $totalPages = count($pages);
+
 echo "Found {$totalPages} published pages\n\n";
 
 if ($totalPages === 0) {
@@ -40,84 +36,40 @@ if ($totalPages === 0) {
     exit(0);
 }
 
-echo "─────────────────────────────────────\n\n";
-
 $success = 0;
 $errors = 0;
-$skipped = 0;
 
 foreach ($pages as $page) {
-    $id = $page['id'];
-    $title = $page['title'];
-    $slug = $page['slug'];
-    $type = $page['type'];
-    
-    echo "[{$type}] {$title} (/{$slug})...\n";
-    
+    $slug = $page->getSlug();
+    $title = $page->getTitle();
+    $type = $page->getType()->value;
+
+    echo "[{$type}] {$title} (/{$slug})...";
+
     try {
-        // Skip collections - they render dynamically
-        if ($type === 'collection') {
-            echo "  ⊘ Skip (collection renders dynamically)\n\n";
-            $skipped++;
-            continue;
-        }
-        
-        // Parse blocks
-        $blocks = json_decode($page['blocks'], true) ?? [];
-        
-        // Generate simple HTML from blocks
-        $html = "<!-- SERVED=pre-rendered | blocks=" . count($blocks) . " -->\n";
-        $html .= '<div class="page-content">' . "\n";
-        
-        foreach ($blocks as $block) {
-            $blockType = $block['type'] ?? 'text';
-            $blockContent = $block['content'] ?? '';
-            
-            switch ($blockType) {
-                case 'text':
-                    $html .= '<div class="text-block">' . htmlspecialchars($blockContent) . '</div>' . "\n";
-                    break;
-                case 'heading':
-                    $level = $block['level'] ?? 2;
-                    $html .= '<h' . intval($level) . '>' . htmlspecialchars($blockContent) . '</h' . intval($level) . '>' . "\n";
-                    break;
-                case 'image':
-                    $src = $block['src'] ?? '';
-                    $alt = $block['alt'] ?? '';
-                    $html .= '<img src="' . htmlspecialchars($src) . '" alt="' . htmlspecialchars($alt) . '" />' . "\n";
-                    break;
-                default:
-                    $html .= '<div class="block ' . htmlspecialchars($blockType) . '">' . htmlspecialchars(json_encode($block)) . '</div>' . "\n";
-            }
-        }
-        
-        $html .= '</div>' . "\n";
-        
-        // Update database
-        $updateStmt = $db->prepare("
-            UPDATE pages
-            SET rendered_html = ?, rendered_at = NOW()
-            WHERE id = ?
-        ");
-        $updateStmt->execute([$html, $id]);
-        
+        $html = $renderPageHtml->execute($page);
+        $page->setRenderedHtml($html);
+        $pageRepository->save($page);
+
         $sizeKB = round(strlen($html) / 1024, 1);
-        echo "  ✓ Success ({$sizeKB} KB)\n\n";
+        echo "  ✓ Updated ({$sizeKB} KB)\n";
         $success++;
-        
-    } catch (Exception $e) {
-        echo "  ✗ Error: " . $e->getMessage() . "\n\n";
+    } catch (Throwable $e) {
+        echo "  ✗ Error: " . $e->getMessage() . "\n";
         $errors++;
     }
 }
 
-echo "========================================\n";
+echo "\n========================================\n";
 echo "SUMMARY\n";
 echo "========================================\n";
 echo "Total pages:  {$totalPages}\n";
 echo "Success:      {$success}\n";
-echo "Skipped:      {$skipped}\n";
 echo "Errors:       {$errors}\n";
 echo "========================================\n\n";
 
-echo "✓ Done!\n\n";
+if ($errors === 0) {
+    echo "✓ Done!\n\n";
+} else {
+    echo "⚠ Completed with errors. See log above.\n\n";
+}
