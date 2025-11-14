@@ -809,6 +809,7 @@ const app = createApp({
                     modules: {
                         toolbar: {
                             container: [
+                                ['undo', 'redo'],
                                 [{ 'header': [1, 2, 3, 4, false] }],
                                 ['bold', 'italic', 'strike'],
                                 ['link'],
@@ -819,8 +820,19 @@ const app = createApp({
                                 ['clean']
                             ],
                             handlers: {
-                                image: imageHandler
+                                image: imageHandler,
+                                undo: () => {
+                                    this.quillInstance.history.undo();
+                                },
+                                redo: () => {
+                                    this.quillInstance.history.redo();
+                                }
                             }
+                        },
+                        history: {
+                            delay: 1000,
+                            maxStack: 100,
+                            userOnly: true
                         },
                         imageResize: {
                             modules: ['Resize', 'DisplaySize']

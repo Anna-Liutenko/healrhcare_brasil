@@ -933,6 +933,35 @@ body {
     fill: #008d8d;
 }
 
+/* ========================= QUILL UNDO/REDO BUTTONS ========================= */
+
+/* Undo button icon */
+.ql-toolbar .ql-undo::before {
+    content: '↶';
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Redo button icon */
+.ql-toolbar .ql-redo::before {
+    content: '↷';
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Hide default SVG icons if Quill tries to add them */
+.ql-toolbar .ql-undo svg,
+.ql-toolbar .ql-redo svg {
+    display: none;
+}
+
+/* Button spacing */
+.ql-toolbar .ql-undo,
+.ql-toolbar .ql-redo {
+    width: 28px;
+    height: 28px;
+}
+
 /* ========================= NOTIFICATION ========================= */
 
 .notification {

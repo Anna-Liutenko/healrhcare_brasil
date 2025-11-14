@@ -514,6 +514,7 @@ class InlineEditorManager {
     this.undoStack.push(html);
     if (this.undoStack.length > 100) this.undoStack.shift();
     this.redoStack = [];
+    this._updateUndoRedoState();
   }
 
   undo() {
@@ -521,6 +522,8 @@ class InlineEditorManager {
     const prev = this.undoStack.pop();
     this.redoStack.push(this.activeElement.innerHTML);
     this.activeElement.innerHTML = prev;
+    this._updateUndoRedoState();
+    console.debug('[InlineEditor] ⬅️ Undo executed');
   }
 
   redo() {
@@ -528,6 +531,8 @@ class InlineEditorManager {
     const next = this.redoStack.pop();
     this.undoStack.push(this.activeElement.innerHTML);
     this.activeElement.innerHTML = next;
+    this._updateUndoRedoState();
+    console.debug('[InlineEditor] ➡️ Redo executed');
   }
 
   _showTooltip(target) {
@@ -633,6 +638,8 @@ class InlineEditorManager {
 
     const buttonRefs = Object.create(null);
     const buttons = [
+      { icon: '↶', title: 'Отменить (Ctrl+Z)', action: () => this.undo(), key: 'undo' },
+      { icon: '↷', title: 'Повторить (Ctrl+Shift+Z)', action: () => this.redo(), key: 'redo' },
       { icon: '<strong>B</strong>', title: 'Жирный (Ctrl+B)', action: () => this.formatBold(), key: 'bold' },
       { icon: '<em>I</em>', title: 'Курсив (Ctrl+I)', action: () => this.formatItalic(), key: 'italic' },
       { icon: '<u>U</u>', title: 'Подчёркивание (Ctrl+U)', action: () => this.formatUnderline(), key: 'underline' },
@@ -755,6 +762,21 @@ class InlineEditorManager {
     });
     if (this._toolbar) {
       this._toolbar.dataset.hasSelection = hasSelection ? 'true' : 'false';
+    }
+    // Also update undo/redo button states
+    this._updateUndoRedoState();
+  }
+
+  _updateUndoRedoState() {
+    if (!this._toolbarButtons) return;
+    const undoBtn = this._toolbarButtons['undo'];
+    const redoBtn = this._toolbarButtons['redo'];
+
+    if (undoBtn) {
+      undoBtn.disabled = this.undoStack.length === 0;
+    }
+    if (redoBtn) {
+      redoBtn.disabled = this.redoStack.length === 0;
     }
   }
 
